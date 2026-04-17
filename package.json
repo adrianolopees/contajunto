@@ -1,0 +1,21 @@
+{
+  "name": "contajunto",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepare": "husky"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0"
+  },
+  "lint-staged": {
+    "backend/src/**/*.ts": "bash -c './backend/node_modules/.bin/tsc --noEmit --project backend/tsconfig.json'"
+  }
+}
