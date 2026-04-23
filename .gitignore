@@ -24,6 +24,7 @@ Thumbs.db
 
 # Prisma
 prisma/migrations/dev.db
+**generated
 
 # MD
 CLAUDE.md
