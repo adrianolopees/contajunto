@@ -6,24 +6,19 @@ import authRoutes from "./routes/auth.routes.js";
 
 const app = express();
 
-// Segurança: adiciona headers HTTP de proteção
 app.use(helmet());
 
-// Permite requisições do frontend (porta 5173 = Vite dev server)
 app.use(
   cors({
     origin: "http://localhost:5173",
-    credentials: true, // necessário para enviar/receber cookies
+    credentials: true,
   }),
 );
 
-// Lê o corpo das requisições como JSON
 app.use(express.json());
 
-// Lê cookies das requisições (necessário para JWT em cookie)
 app.use(cookieParser());
 
-// Rota de health check — confirma que o servidor está vivo
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
 });
