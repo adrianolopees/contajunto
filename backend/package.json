@@ -9,7 +9,7 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "db:up": "docker compose up -d",
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand"
   },
   "keywords": [],
   "author": "",

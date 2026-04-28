@@ -1,6 +1,7 @@
 import request from "supertest";
 import app from "../app.js";
 import prisma from "../lib/prisma.js";
+import { createAndAuthenticateUser } from "./helpers.js";
 
 beforeEach(async () => {
   await prisma.refreshToken.deleteMany();
@@ -15,12 +16,6 @@ afterAll(async () => {
 
 const testToken = {
   token: "asndohoiuhP2Y7E98hakjsdbKJB",
-};
-
-const testUser = {
-  name: "Test User",
-  email: "test@contajunto.com",
-  password: "senha1234",
 };
 
 describe("GET /users/me", () => {
@@ -42,17 +37,13 @@ describe("GET /users/me", () => {
   });
 
   it("should return user data with valid token", async () => {
-    await request(app).post("/auth/register").send(testUser);
-    const loginRes = await request(app)
-      .post("/auth/login")
-      .send({ email: testUser.email, password: testUser.password });
-    const { accessToken } = loginRes.body;
+    const accessToken = await createAndAuthenticateUser();
     const res = await request(app)
       .get("/users/me")
       .set("Authorization", `Bearer ${accessToken}`);
 
     expect(res.status).toBe(200);
     expect(res.body.user).not.toHaveProperty("passwordHash");
-    expect(res.body.user.email).toBe(testUser.email);
+    expect(res.body.user.email).toBe("test@contajunto.com");
   });
 });
