@@ -7,6 +7,16 @@ const testFamilyGroup = {
   name: "Silva",
 };
 
+const testInviteCode = {
+  inviteCode: "550e8400-e29b-41d4-a716-446655440000",
+};
+
+const user2 = {
+  name: "Test user2",
+  email: "test2@contajunto.com",
+  password: "senha1234",
+};
+
 beforeEach(async () => {
   await prisma.familyGroup.deleteMany();
   await prisma.refreshToken.deleteMany();
@@ -66,5 +76,55 @@ describe("POST /groups", () => {
     const res = await request(app).post("/groups").send(testFamilyGroup);
 
     expect(res.status).toBe(401);
+  });
+});
+
+describe("POST /groups/join", () => {
+  it("should return 400 when inviteCode is missing", async () => {
+    const accessToken = await createAndAuthenticateUser();
+    const res = await request(app)
+      .post("/groups/join")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ name: "OT" });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("should return 409 when user already belongs to a group", async () => {
+    const accessToken = await createAndAuthenticateUser();
+    await request(app)
+      .post("/groups")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send(testFamilyGroup);
+    const res = await request(app)
+      .post("/groups/join")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send(testInviteCode);
+
+    expect(res.status).toBe(409);
+  });
+
+  it("should return 404 when inviteCode does not exist", async () => {
+    const accessToken = await createAndAuthenticateUser();
+    const res = await request(app)
+      .post("/groups/join")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send(testInviteCode);
+
+    expect(res.status).toBe(404);
+  });
+
+  it("should return 200 and join the group successfully", async () => {
+    const accessToken1 = await createAndAuthenticateUser();
+    const groupRes = await request(app)
+      .post("/groups")
+      .set("Authorization", `Bearer ${accessToken1}`)
+      .send(testFamilyGroup);
+    const accessToken2 = await createAndAuthenticateUser(user2);
+    const res = await request(app)
+      .post("/groups/join")
+      .set("Authorization", `Bearer ${accessToken2}`)
+      .send({ inviteCode: groupRes.body.group.inviteCode });
+    expect(res.status).toBe(200);
   });
 });

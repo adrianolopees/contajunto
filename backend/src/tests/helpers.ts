@@ -7,10 +7,10 @@ const defaultUser = {
   password: "senha1234",
 };
 
-export async function createAndAuthenticateUser() {
-  await request(app).post("/auth/register").send(defaultUser);
+export async function createAndAuthenticateUser(user = defaultUser) {
+  await request(app).post("/auth/register").send(user);
   const res = await request(app)
     .post("/auth/login")
-    .send({ email: defaultUser.email, password: defaultUser.password });
+    .send({ email: user.email, password: user.password });
   return res.body.accessToken as string;
 }
