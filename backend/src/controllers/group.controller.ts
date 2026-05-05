@@ -16,7 +16,6 @@ export async function createGroup(req: Request, res: Response) {
     res.status(400).json({ errors: z.treeifyError(result.error) });
     return;
   }
-  const groupName = result.data.name;
 
   const userId = req.user!.id;
 
@@ -31,6 +30,7 @@ export async function createGroup(req: Request, res: Response) {
       .json({ message: "You cannot belong to more than one group" });
     return;
   }
+  const groupName = result.data.name;
 
   const group = await prisma.$transaction(async (tx) => {
     const group = await tx.familyGroup.create({ data: { name: groupName } });
@@ -82,4 +82,28 @@ export async function joinGroup(req: Request, res: Response) {
   });
 
   res.status(200).json({ message: "Join group successfully" });
+}
+
+export async function getGroup(req: Request, res: Response) {
+  const group = await prisma.user.findUnique({
+    where: { id: req.user!.id },
+    select: {
+      familyGroup: {
+        select: {
+          id: true,
+          name: true,
+          users: {
+            select: { id: true, name: true, email: true },
+          },
+        },
+      },
+    },
+  });
+
+  if (!group?.familyGroup) {
+    res.status(404).json({ message: "User is not part of any group" });
+    return;
+  }
+
+  res.status(200).json({ group: group.familyGroup });
 }

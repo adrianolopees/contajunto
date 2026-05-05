@@ -128,3 +128,51 @@ describe("POST /groups/join", () => {
     expect(res.status).toBe(200);
   });
 });
+
+describe("GET /groups", () => {
+  it("should return 401 when no token is provided", async () => {
+    const res = await request(app).get("/groups");
+
+    expect(res.status).toBe(401);
+  });
+
+  it("should return 404 when FamilyGroup does not exist", async () => {
+    const accessToken = await createAndAuthenticateUser();
+    const res = await request(app)
+      .get("/groups")
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(res.status).toBe(404);
+  });
+
+  it("should return 200 and group  + users", async () => {
+    const accessToken1 = await createAndAuthenticateUser();
+    const groupRes = await request(app)
+      .post("/groups")
+      .set("Authorization", `Bearer ${accessToken1}`)
+      .send(testFamilyGroup);
+    const accessToken2 = await createAndAuthenticateUser(user2);
+    await request(app)
+      .post("/groups/join")
+      .set("Authorization", `Bearer ${accessToken2}`)
+      .send({ inviteCode: groupRes.body.group.inviteCode });
+    const getGroup = await request(app)
+      .get("/groups")
+      .set("Authorization", `Bearer ${accessToken1}`);
+
+    expect(getGroup.status).toBe(200);
+    expect(getGroup.body).toMatchObject({
+      group: {
+        name: expect.any(String),
+        id: expect.any(String),
+        users: expect.arrayContaining([
+          expect.objectContaining({
+            name: expect.any(String),
+            id: expect.any(String),
+            email: expect.any(String),
+          }),
+        ]),
+      },
+    });
+  });
+});
