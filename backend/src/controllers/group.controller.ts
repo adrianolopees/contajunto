@@ -3,8 +3,13 @@ import z from "zod";
 import prisma from "../lib/prisma.js";
 
 const groupSchema = z.object({
-  name: z.string().min(3),
+  name: z
+    .string({ error: "Nome é obrigatório" })
+    .trim()
+    .min(2, { error: "O nome deve ter no mínimo 2 caracteres" })
+    .max(100, { error: "O nome não pode exceder 100 caracteres" }),
 });
+
 const joinSchema = z.object({
   inviteCode: z.uuid(),
 });
@@ -13,7 +18,7 @@ export async function createGroup(req: Request, res: Response) {
   const result = groupSchema.safeParse(req.body);
 
   if (!result.success) {
-    res.status(400).json({ errors: z.treeifyError(result.error) });
+    res.status(400).json({ errors: z.flattenError(result.error) });
     return;
   }
 
@@ -49,7 +54,7 @@ export async function joinGroup(req: Request, res: Response) {
   const result = joinSchema.safeParse(req.body);
 
   if (!result.success) {
-    res.status(400).json({ errors: z.treeifyError(result.error) });
+    res.status(400).json({ errors: z.flattenError(result.error) });
     return;
   }
   const inviteCode = result.data.inviteCode;

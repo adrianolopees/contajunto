@@ -13,21 +13,38 @@ const COOKIE_OPTIONS = {
 };
 
 const registerSchema = z.object({
-  name: z.string().min(2),
-  email: z.email(),
-  password: z.string().min(8),
+  name: z
+    .string({ error: "Nome é obrigatório" })
+    .trim()
+    .min(2, { error: "O nome deve ter no mínimo 2 caracteres" })
+    .max(100, { error: "O nome não pode exceder 100 caracteres" }),
+  email: z
+    .string({ error: "E-mail é obrigatório" })
+    .trim()
+    .toLowerCase()
+    .pipe(z.email({ error: "E-mail inválido" })),
+  password: z
+    .string({ error: "Senha é obrigatória" })
+    .min(8, { error: "A senha deve ter no mínimo 8 caracteres" })
+    .max(72, { error: "A senha não pode exceder 72 caracteres" }),
 });
 
 const loginSchema = z.object({
-  email: z.email(),
-  password: z.string().min(8),
+  email: z
+    .string({ error: "E-mail é obrigatório" })
+    .trim()
+    .toLowerCase()
+    .pipe(z.email({ error: "E-mail inválido" })),
+  password: z
+    .string({ error: "Senha é obrigatória" })
+    .max(72, { error: "A senha não pode exceder 72 caracteres" }),
 });
 
 export async function register(req: Request, res: Response) {
   const result = registerSchema.safeParse(req.body);
 
   if (!result.success) {
-    res.status(400).json({ errors: z.treeifyError(result.error) });
+    res.status(400).json({ errors: z.flattenError(result.error) });
     return;
   }
 
@@ -53,7 +70,7 @@ export async function login(req: Request, res: Response) {
   const result = loginSchema.safeParse(req.body);
 
   if (!result.success) {
-    res.status(400).json({ errors: z.treeifyError(result.error) });
+    res.status(400).json({ errors: z.flattenError(result.error) });
     return;
   }
 
