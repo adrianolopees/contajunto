@@ -17,6 +17,12 @@ const user2 = {
   password: "senha1234",
 };
 
+const user3 = {
+  name: "Test user3",
+  email: "test3@contajunto.com",
+  password: "senha1234",
+};
+
 beforeEach(async () => {
   await prisma.familyGroup.deleteMany();
   await prisma.refreshToken.deleteMany();
@@ -67,7 +73,7 @@ describe("POST /groups", () => {
     const res = await request(app)
       .post("/groups")
       .set("Authorization", `Bearer ${accessToken}`)
-      .send({ name: "AB" });
+      .send({ name: "A" });
 
     expect(res.status).toBe(400);
   });
@@ -126,6 +132,90 @@ describe("POST /groups/join", () => {
       .set("Authorization", `Bearer ${accessToken2}`)
       .send({ inviteCode: groupRes.body.group.inviteCode });
     expect(res.status).toBe(200);
+  });
+
+  it("should regenerate inviteCode after join", async () => {
+    const accessToken1 = await createAndAuthenticateUser();
+    const groupRes = await request(app)
+      .post("/groups")
+      .set("Authorization", `Bearer ${accessToken1}`)
+      .send(testFamilyGroup);
+    const originalInviteCode = groupRes.body.group.inviteCode;
+
+    const accessToken2 = await createAndAuthenticateUser(user2);
+    await request(app)
+      .post("/groups/join")
+      .set("Authorization", `Bearer ${accessToken2}`)
+      .send({ inviteCode: originalInviteCode });
+
+    const inviteRes = await request(app)
+      .get("/groups/invite")
+      .set("Authorization", `Bearer ${accessToken1}`);
+
+    expect(inviteRes.status).toBe(200);
+    expect(inviteRes.body.inviteCode).not.toBe(originalInviteCode);
+  });
+
+  it("should return 409 when group is already full", async () => {
+    const accessToken1 = await createAndAuthenticateUser();
+    const groupRes = await request(app)
+      .post("/groups")
+      .set("Authorization", `Bearer ${accessToken1}`)
+      .send(testFamilyGroup);
+    const originalInviteCode = groupRes.body.group.inviteCode;
+
+    const accessToken2 = await createAndAuthenticateUser(user2);
+    await request(app)
+      .post("/groups/join")
+      .set("Authorization", `Bearer ${accessToken2}`)
+      .send({ inviteCode: originalInviteCode });
+
+    const inviteRes = await request(app)
+      .get("/groups/invite")
+      .set("Authorization", `Bearer ${accessToken1}`);
+    const newInviteCode = inviteRes.body.inviteCode;
+
+    const accessToken3 = await createAndAuthenticateUser(user3);
+    const res = await request(app)
+      .post("/groups/join")
+      .set("Authorization", `Bearer ${accessToken3}`)
+      .send({ inviteCode: newInviteCode });
+
+    expect(res.status).toBe(409);
+  });
+});
+
+describe("GET /groups/invite", () => {
+  it("should return 401 when no token is provided", async () => {
+    const res = await request(app).get("/groups/invite");
+
+    expect(res.status).toBe(401);
+  });
+
+  it("should return 404 when user has no group", async () => {
+    const accessToken = await createAndAuthenticateUser();
+    const res = await request(app)
+      .get("/groups/invite")
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(res.status).toBe(404);
+  });
+
+  it("should return 200 with inviteCode", async () => {
+    const accessToken = await createAndAuthenticateUser();
+    await request(app)
+      .post("/groups")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send(testFamilyGroup);
+
+    const res = await request(app)
+      .get("/groups/invite")
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      inviteCode: expect.any(String),
+    });
   });
 });
 

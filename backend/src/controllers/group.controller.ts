@@ -74,17 +74,30 @@ export async function joinGroup(req: Request, res: Response) {
 
   const group = await prisma.familyGroup.findUnique({
     where: { inviteCode: inviteCode },
+    select: { id: true, _count: { select: { users: true } } },
   });
 
   if (!group) {
     res.status(404).json({ message: "Invalid invite code" });
     return;
   }
+  const users = group._count.users;
+  if (users >= 2) {
+    res.status(409).json({ message: "The group exceeded the user limit" });
+    return;
+  }
 
-  await prisma.user.update({
-    where: { id: userId },
-    data: { familyGroupId: group.id },
-  });
+  const newInviteCode = crypto.randomUUID();
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: userId },
+      data: { familyGroupId: group.id },
+    }),
+    prisma.familyGroup.update({
+      where: { id: group.id },
+      data: { inviteCode: newInviteCode },
+    }),
+  ]);
 
   res.status(200).json({ message: "Join group successfully" });
 }
@@ -111,4 +124,17 @@ export async function getGroup(req: Request, res: Response) {
   }
 
   res.status(200).json({ group: group.familyGroup });
+}
+
+export async function getInviteCode(req: Request, res: Response) {
+  const user = await prisma.user.findUnique({
+    where: { id: req.user!.id },
+    select: { familyGroup: { select: { inviteCode: true } } },
+  });
+
+  if (!user?.familyGroup) {
+    res.status(404).json({ message: "User is not part of any group" });
+    return;
+  }
+  res.status(200).json({ inviteCode: user.familyGroup.inviteCode });
 }
