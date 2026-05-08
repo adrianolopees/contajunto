@@ -40,15 +40,10 @@ const loginSchema = z.object({
     .max(72, { error: "A senha não pode exceder 72 caracteres" }),
 });
 
+const JWT_SECRET = process.env.JWT_SECRET as string;
+
 export async function register(req: Request, res: Response) {
-  const result = registerSchema.safeParse(req.body);
-
-  if (!result.success) {
-    res.status(400).json({ errors: z.flattenError(result.error) });
-    return;
-  }
-
-  const { name, email, password } = result.data;
+  const { name, email, password } = registerSchema.parse(req.body);
 
   const existingUser = await prisma.user.findUnique({ where: { email } });
 
@@ -67,14 +62,7 @@ export async function register(req: Request, res: Response) {
 }
 
 export async function login(req: Request, res: Response) {
-  const result = loginSchema.safeParse(req.body);
-
-  if (!result.success) {
-    res.status(400).json({ errors: z.flattenError(result.error) });
-    return;
-  }
-
-  const { email, password } = result.data;
+  const { email, password } = loginSchema.parse(req.body);
 
   const user = await prisma.user.findUnique({ where: { email } });
 
@@ -89,7 +77,7 @@ export async function login(req: Request, res: Response) {
     return;
   }
 
-  const accessToken = jwt.sign({ userId: user.id }, process.env.JWT_SECRET!, {
+  const accessToken = jwt.sign({ userId: user.id }, JWT_SECRET, {
     expiresIn: "15m",
   });
 
@@ -142,11 +130,9 @@ export async function refresh(req: Request, res: Response) {
     }),
   ]);
 
-  const accessToken = jwt.sign(
-    { userId: stored.userId },
-    process.env.JWT_SECRET!,
-    { expiresIn: "15m" },
-  );
+  const accessToken = jwt.sign({ userId: stored.userId }, JWT_SECRET, {
+    expiresIn: "15m",
+  });
 
   res.cookie("refreshToken", newRefreshToken, COOKIE_OPTIONS);
   res.status(200).json({ accessToken });

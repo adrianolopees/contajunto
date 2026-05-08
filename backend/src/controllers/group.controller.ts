@@ -15,13 +15,7 @@ const joinSchema = z.object({
 });
 
 export async function createGroup(req: Request, res: Response) {
-  const result = groupSchema.safeParse(req.body);
-
-  if (!result.success) {
-    res.status(400).json({ errors: z.flattenError(result.error) });
-    return;
-  }
-
+  const { name: nameGroup } = groupSchema.parse(req.body);
   const userId = req.user.id;
 
   const existingGroup = await prisma.user.findUnique({
@@ -35,71 +29,68 @@ export async function createGroup(req: Request, res: Response) {
       .json({ message: "You cannot belong to more than one group" });
     return;
   }
-  const groupName = result.data.name;
 
-  const group = await prisma.$transaction(async (tx) => {
-    const group = await tx.familyGroup.create({ data: { name: groupName } });
+  const createdGroup = await prisma.$transaction(async (tx) => {
+    const newGroup = await tx.familyGroup.create({ data: { name: nameGroup } });
     await tx.user.update({
       where: { id: userId },
-      data: { familyGroupId: group.id },
+      data: { familyGroupId: newGroup.id },
     });
-    return group;
+    return newGroup;
   });
+
   res.status(201).json({
-    group: { id: group.id, name: group.name, inviteCode: group.inviteCode },
+    group: {
+      id: createdGroup.id,
+      name: createdGroup.name,
+      inviteCode: createdGroup.inviteCode,
+    },
   });
 }
 
 export async function joinGroup(req: Request, res: Response) {
-  const result = joinSchema.safeParse(req.body);
-
-  if (!result.success) {
-    res.status(400).json({ errors: z.flattenError(result.error) });
-    return;
-  }
-  const inviteCode = result.data.inviteCode;
+  const { inviteCode } = joinSchema.parse(req.body);
   const userId = req.user.id;
 
-  const existingGroup = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { familyGroupId: true },
-  });
+  try {
+    await prisma.$transaction(async (tx) => {
+      const group = await tx.familyGroup.findUnique({
+        where: { inviteCode },
+        include: { _count: { select: { users: true } } },
+      });
 
-  if (existingGroup?.familyGroupId) {
-    res
-      .status(409)
-      .json({ message: "You cannot belong to more than one group" });
-    return;
+      if (!group) throw new Error("INVALID_INVITE");
+      if (group._count.users >= 2) throw new Error("GROUP_FULL");
+
+      const updatedUser = await tx.user.update({
+        where: {
+          id: userId,
+          familyGroupId: null,
+        },
+        data: { familyGroupId: group.id },
+      });
+
+      await tx.familyGroup.update({
+        where: { id: group.id },
+        data: { inviteCode: crypto.randomUUID() },
+      });
+      return updatedUser;
+    });
+
+    res.status(200).json({ message: "Join group successfully" });
+  } catch (err) {
+    if (err instanceof Error) {
+      if (err.message === "INVALID_INVITE") {
+        res.status(404).json({ message: "Invalid invite code" });
+        return;
+      }
+      if (err.message === "GROUP_FULL") {
+        res.status(409).json({ message: "The group exceeded the user limit" });
+        return;
+      }
+    }
+    throw err;
   }
-
-  const group = await prisma.familyGroup.findUnique({
-    where: { inviteCode: inviteCode },
-    select: { id: true, _count: { select: { users: true } } },
-  });
-
-  if (!group) {
-    res.status(404).json({ message: "Invalid invite code" });
-    return;
-  }
-  const users = group._count.users;
-  if (users >= 2) {
-    res.status(409).json({ message: "The group exceeded the user limit" });
-    return;
-  }
-
-  const newInviteCode = crypto.randomUUID();
-  await prisma.$transaction([
-    prisma.user.update({
-      where: { id: userId },
-      data: { familyGroupId: group.id },
-    }),
-    prisma.familyGroup.update({
-      where: { id: group.id },
-      data: { inviteCode: newInviteCode },
-    }),
-  ]);
-
-  res.status(200).json({ message: "Join group successfully" });
 }
 
 export async function getGroup(req: Request, res: Response) {
