@@ -52,6 +52,16 @@ export async function joinGroup(req: Request, res: Response) {
   const { inviteCode } = joinSchema.parse(req.body);
   const userId = req.user.id;
 
+  const existingGroup = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { familyGroupId: true },
+  });
+
+  if (existingGroup?.familyGroupId) {
+    res.status(409).json({ message: "You cannot belong to more than one group" });
+    return;
+  }
+
   try {
     await prisma.$transaction(async (tx) => {
       const group = await tx.familyGroup.findUnique({
