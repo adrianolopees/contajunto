@@ -3,7 +3,7 @@ import prisma from "../lib/prisma.js";
 
 export async function getMe(req: Request, res: Response) {
   const user = await prisma.user.findUnique({
-    where: { id: req.user!.id },
+    where: { id: req.user.id },
     select: {
       id: true,
       name: true,

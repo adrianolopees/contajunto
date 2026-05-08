@@ -22,7 +22,7 @@ export async function createGroup(req: Request, res: Response) {
     return;
   }
 
-  const userId = req.user!.id;
+  const userId = req.user.id;
 
   const existingGroup = await prisma.user.findUnique({
     where: { id: userId },
@@ -58,7 +58,7 @@ export async function joinGroup(req: Request, res: Response) {
     return;
   }
   const inviteCode = result.data.inviteCode;
-  const userId = req.user!.id;
+  const userId = req.user.id;
 
   const existingGroup = await prisma.user.findUnique({
     where: { id: userId },
@@ -104,7 +104,7 @@ export async function joinGroup(req: Request, res: Response) {
 
 export async function getGroup(req: Request, res: Response) {
   const group = await prisma.user.findUnique({
-    where: { id: req.user!.id },
+    where: { id: req.user.id },
     select: {
       familyGroup: {
         select: {
@@ -128,7 +128,7 @@ export async function getGroup(req: Request, res: Response) {
 
 export async function getInviteCode(req: Request, res: Response) {
   const user = await prisma.user.findUnique({
-    where: { id: req.user!.id },
+    where: { id: req.user.id },
     select: { familyGroup: { select: { inviteCode: true } } },
   });
 
