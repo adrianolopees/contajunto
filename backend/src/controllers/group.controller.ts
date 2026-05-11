@@ -15,15 +15,14 @@ const joinSchema = z.object({
 });
 
 export async function createGroup(req: Request, res: Response) {
-  const { name: nameGroup } = groupSchema.parse(req.body);
+  const { name } = groupSchema.parse(req.body);
   const userId = req.user.id;
 
-  const existingGroup = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { familyGroupId: true },
+  const existingGroup = await prisma.familyGroup.findFirst({
+    where: { users: { some: { id: userId } } },
   });
 
-  if (existingGroup?.familyGroupId) {
+  if (existingGroup) {
     res
       .status(409)
       .json({ message: "You cannot belong to more than one group" });
@@ -31,7 +30,7 @@ export async function createGroup(req: Request, res: Response) {
   }
 
   const createdGroup = await prisma.$transaction(async (tx) => {
-    const newGroup = await tx.familyGroup.create({ data: { name: nameGroup } });
+    const newGroup = await tx.familyGroup.create({ data: { name: name } });
     await tx.user.update({
       where: { id: userId },
       data: { familyGroupId: newGroup.id },
@@ -52,13 +51,14 @@ export async function joinGroup(req: Request, res: Response) {
   const { inviteCode } = joinSchema.parse(req.body);
   const userId = req.user.id;
 
-  const existingGroup = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { familyGroupId: true },
+  const existingGroup = await prisma.familyGroup.findFirst({
+    where: { users: { some: { id: userId } } },
   });
 
-  if (existingGroup?.familyGroupId) {
-    res.status(409).json({ message: "You cannot belong to more than one group" });
+  if (existingGroup) {
+    res
+      .status(409)
+      .json({ message: "You cannot belong to more than one group" });
     return;
   }
 
@@ -138,4 +138,32 @@ export async function getInviteCode(req: Request, res: Response) {
     return;
   }
   res.status(200).json({ inviteCode: user.familyGroup.inviteCode });
+}
+
+export async function deleteGroup(req: Request, res: Response) {
+  const userId = req.user.id;
+  const familyGroup = await prisma.familyGroup.findFirst({
+    where: { users: { some: { id: userId } } },
+    select: {
+      id: true,
+      _count: { select: { users: true } },
+    },
+  });
+
+  if (!familyGroup) {
+    res.status(404).json({ message: "User is not part of any group" });
+    return;
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: userId },
+      data: { familyGroupId: null },
+    });
+
+    if (familyGroup._count.users === 1) {
+      await tx.familyGroup.delete({ where: { id: familyGroup.id } });
+    }
+  });
+  res.status(200).json({ message: "Successfully left the group" });
 }

@@ -266,3 +266,62 @@ describe("GET /groups", () => {
     });
   });
 });
+
+describe("DELETE /groups/leave", () => {
+  it("should return 404 when user is not group", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .delete("/groups/leave")
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(res.status).toBe(404);
+  });
+
+  it("should return 200 1 user group delet", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    await request(app)
+      .post("/groups")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send(testFamilyGroup);
+
+    await request(app)
+      .delete("/groups/leave")
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    const res = await request(app)
+      .get("/groups")
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(res.status).toBe(404);
+  });
+  it("should return 200 and group remains with 2 users", async () => {
+    const accessToken1 = await createAndAuthenticateUser();
+    const accessToken2 = await createAndAuthenticateUser(user2);
+
+    await request(app)
+      .post("/groups")
+      .set("Authorization", `Bearer ${accessToken1}`)
+      .send(testFamilyGroup);
+
+    const inviteRes = await request(app)
+      .get("/groups/invite")
+      .set("Authorization", `Bearer ${accessToken1}`);
+
+    await request(app)
+      .post("/groups/join")
+      .set("Authorization", `Bearer ${accessToken2}`)
+      .send({ inviteCode: inviteRes.body.inviteCode });
+
+    await request(app)
+      .delete("/groups/leave")
+      .set("Authorization", `Bearer ${accessToken1}`);
+
+    const res = await request(app)
+      .get("/groups")
+      .set("Authorization", `Bearer ${accessToken2}`);
+
+    expect(res.status).toBe(200);
+  });
+});
