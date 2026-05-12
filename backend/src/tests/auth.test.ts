@@ -9,11 +9,13 @@ const testUser = {
 };
 
 beforeEach(async () => {
+  await prisma.category.deleteMany();
   await prisma.refreshToken.deleteMany();
   await prisma.user.deleteMany();
 });
 
 afterAll(async () => {
+  await prisma.category.deleteMany();
   await prisma.refreshToken.deleteMany();
   await prisma.user.deleteMany();
   await prisma.$disconnect();

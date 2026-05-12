@@ -52,10 +52,23 @@ export async function register(req: Request, res: Response) {
     return;
   }
 
+  const defaultCategories = await prisma.defaultCategory.findMany();
   const passwordHash = await argon2.hash(password);
 
-  const user = await prisma.user.create({
-    data: { name, email, passwordHash },
+  const user = await prisma.$transaction(async (tx) => {
+    const newUser = await tx.user.create({
+      data: { name, email, passwordHash },
+    });
+
+    await tx.category.createMany({
+      data: defaultCategories.map((cat) => ({
+        name: cat.name,
+        color: cat.color,
+        icon: cat.icon,
+        userId: newUser.id,
+      })),
+    });
+    return newUser;
   });
 
   res.status(201).json({ id: user.id, name: user.name, email: user.email });

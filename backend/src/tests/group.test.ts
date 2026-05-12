@@ -24,12 +24,14 @@ const user3 = {
 };
 
 beforeEach(async () => {
+  await prisma.category.deleteMany();
   await prisma.familyGroup.deleteMany();
   await prisma.refreshToken.deleteMany();
   await prisma.user.deleteMany();
 });
 
 afterAll(async () => {
+  await prisma.category.deleteMany();
   await prisma.familyGroup.deleteMany();
   await prisma.refreshToken.deleteMany();
   await prisma.user.deleteMany();
