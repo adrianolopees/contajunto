@@ -14,6 +14,16 @@ export async function createTransaction(req: Request, res: Response) {
     req.body,
   );
 
+  if (categoryId) {
+    const category = await prisma.category.findUnique({
+      where: { id: categoryId },
+    });
+    if (!category || category.userId !== req.user.id) {
+      res.status(403).json({ message: "Invalid category" });
+      return;
+    }
+  }
+
   const now = new Date();
   const month = now.getMonth() + 1;
   const year = now.getFullYear();
