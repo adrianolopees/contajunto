@@ -16,6 +16,7 @@ model User {
   createdAt     DateTime     @default(now())
   familyGroupId String?
   familyGroup   FamilyGroup? @relation(fields: [familyGroupId], references: [id])
+  categories Category[]
   transactions  Transaction[]
   refreshTokens RefreshToken[]
 
@@ -35,8 +36,6 @@ model FamilyGroup {
   name         String
   inviteCode   String        @unique @default(uuid())
   users        User[]
-  transactions Transaction[]
-  categories   Category[]
 }
 
 model Transaction {
@@ -52,9 +51,7 @@ model Transaction {
   aiRawInput    String?
   createdAt     DateTime    @default(now())
   userId        String
-  familyGroupId String
   user          User        @relation(fields: [userId], references: [id])
-  familyGroup   FamilyGroup @relation(fields: [familyGroupId], references: [id])
 }
 
 model Category {
@@ -62,9 +59,17 @@ model Category {
   name          String
   color         String
   icon          String
-  familyGroupId String
-  familyGroup   FamilyGroup   @relation(fields: [familyGroupId], references: [id])
   transactions  Transaction[]
+  userId        String
+  user          User @relation(fields: [userId], references: [id])
+
+}
+
+model DefaultCategory {
+  id            String @id @default(uuid())
+  name          String
+  color         String
+  icon          String
 }
 
 enum TransactionType {
