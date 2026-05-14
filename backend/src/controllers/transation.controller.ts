@@ -9,6 +9,11 @@ const transactionSchema = z.object({
   categoryId: z.uuid().optional(),
 });
 
+const querySchema = z.object({
+  month: z.coerce.number().int().min(1).max(12).optional(),
+  year: z.coerce.number().int().optional(),
+});
+
 export async function createTransaction(req: Request, res: Response) {
   const { amount, type, description, categoryId } = transactionSchema.parse(
     req.body,
@@ -42,4 +47,20 @@ export async function createTransaction(req: Request, res: Response) {
   });
 
   res.status(201).json({ transaction });
+}
+
+export async function getTransactions(req: Request, res: Response) {
+  const { month, year: rawYear } = querySchema.parse(req.query);
+  const currentYear = new Date().getFullYear();
+
+  const year = month && !rawYear ? currentYear : rawYear;
+  const transactions = await prisma.transaction.findMany({
+    where: {
+      userId: req.user.id,
+      ...(month && { month }),
+      ...(year && { year }),
+    },
+  });
+
+  res.status(200).json({ transactions });
 }
