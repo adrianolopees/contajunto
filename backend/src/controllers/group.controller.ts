@@ -1,4 +1,5 @@
 import { Response, Request } from "express";
+import { Prisma } from "../generated/prisma/index.js";
 import z from "zod";
 import prisma from "../lib/prisma.js";
 
@@ -16,65 +17,63 @@ const joinSchema = z.object({
 
 export async function createGroup(req: Request, res: Response) {
   const { name } = groupSchema.parse(req.body);
-  const userId = req.user.id;
-
-  const existingGroup = await prisma.familyGroup.findFirst({
-    where: { users: { some: { id: userId } } },
-  });
-
-  if (existingGroup) {
-    res
-      .status(409)
-      .json({ message: "You cannot belong to more than one group" });
-    return;
-  }
-
-  const createdGroup = await prisma.$transaction(async (tx) => {
-    const newGroup = await tx.familyGroup.create({ data: { name: name } });
-    await tx.user.update({
-      where: { id: userId },
-      data: { familyGroupId: newGroup.id },
+  try {
+    const group = await prisma.$transaction(async (tx) => {
+      const newGroup = await tx.familyGroup.create({ data: { name } });
+      await tx.user.update({
+        where: { id: req.user.id, familyGroupId: null },
+        data: { familyGroupId: newGroup.id },
+      });
+      return newGroup;
     });
-    return newGroup;
-  });
 
-  res.status(201).json({
-    group: {
-      id: createdGroup.id,
-      name: createdGroup.name,
-      inviteCode: createdGroup.inviteCode,
-    },
-  });
+    res.status(201).json({
+      group: {
+        id: group.id,
+        name: group.name,
+        inviteCode: group.inviteCode,
+      },
+    });
+  } catch (err) {
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err.code === "P2025"
+    ) {
+      res
+        .status(409)
+        .json({ message: "You cannot belong to more than one group" });
+      return;
+    }
+    throw err;
+  }
 }
 
 export async function joinGroup(req: Request, res: Response) {
   const { inviteCode } = joinSchema.parse(req.body);
-  const userId = req.user.id;
 
-  const existingGroup = await prisma.familyGroup.findFirst({
-    where: { users: { some: { id: userId } } },
+  const user = await prisma.user.findUnique({
+    where: { id: req.user.id },
+    select: { familyGroupId: true },
   });
 
-  if (existingGroup) {
+  if (user?.familyGroupId) {
     res
       .status(409)
       .json({ message: "You cannot belong to more than one group" });
     return;
   }
-
   try {
     await prisma.$transaction(async (tx) => {
       const group = await tx.familyGroup.findUnique({
         where: { inviteCode },
         include: { _count: { select: { users: true } } },
       });
-
       if (!group) throw new Error("INVALID_INVITE");
       if (group._count.users >= 2) throw new Error("GROUP_FULL");
 
-      const updatedUser = await tx.user.update({
+      await tx.user.update({
         where: {
-          id: userId,
+          id: req.user.id,
           familyGroupId: null,
         },
         data: { familyGroupId: group.id },
@@ -84,11 +83,19 @@ export async function joinGroup(req: Request, res: Response) {
         where: { id: group.id },
         data: { inviteCode: crypto.randomUUID() },
       });
-      return updatedUser;
     });
 
     res.status(200).json({ message: "Join group successfully" });
   } catch (err) {
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err.code === "P2025"
+    ) {
+      res
+        .status(409)
+        .json({ message: "You cannot belong to more than one group" });
+      return;
+    }
     if (err instanceof Error) {
       if (err.message === "INVALID_INVITE") {
         res.status(404).json({ message: "Invalid invite code" });
@@ -142,15 +149,12 @@ export async function getInviteCode(req: Request, res: Response) {
 
 export async function deleteGroup(req: Request, res: Response) {
   const userId = req.user.id;
-  const familyGroup = await prisma.familyGroup.findFirst({
-    where: { users: { some: { id: userId } } },
-    select: {
-      id: true,
-      _count: { select: { users: true } },
-    },
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { familyGroupId: true },
   });
 
-  if (!familyGroup) {
+  if (!user?.familyGroupId) {
     res.status(404).json({ message: "User is not part of any group" });
     return;
   }
@@ -160,9 +164,12 @@ export async function deleteGroup(req: Request, res: Response) {
       where: { id: userId },
       data: { familyGroupId: null },
     });
+    const count = await tx.user.count({
+      where: { familyGroupId: user.familyGroupId },
+    });
 
-    if (familyGroup._count.users === 1) {
-      await tx.familyGroup.delete({ where: { id: familyGroup.id } });
+    if (count === 0) {
+      await tx.familyGroup.delete({ where: { id: user.familyGroupId! } });
     }
   });
   res.status(200).json({ message: "Successfully left the group" });

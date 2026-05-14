@@ -26,9 +26,7 @@ const validTransaction = {
 
 describe("POST /transactions", () => {
   it("should return 401 when no token is provided", async () => {
-    const res = await request(app)
-      .post("/transactions")
-      .send(validTransaction);
+    const res = await request(app).post("/transactions").send(validTransaction);
 
     expect(res.status).toBe(401);
   });
@@ -53,6 +51,11 @@ describe("POST /transactions", () => {
       .send(validTransaction);
 
     expect(res.status).toBe(201);
-    expect(res.body).toMatchObject({ message: "Transaction created successfully" });
+    expect(res.body).toMatchObject({
+      transaction: {
+        id: expect.any(String),
+        type: expect.any(String),
+      },
+    });
   });
 });
