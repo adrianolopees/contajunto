@@ -64,3 +64,21 @@ export async function getTransactions(req: Request, res: Response) {
 
   res.status(200).json({ transactions });
 }
+
+export async function getTransaction(req: Request, res: Response) {
+  const id = z.uuid().parse(req.params.id);
+
+  const transaction = await prisma.transaction.findFirst({
+    where: { id, userId: req.user.id },
+    include: {
+      category: { select: { id: true, name: true, color: true, icon: true } },
+    },
+  });
+
+  if (!transaction) {
+    res.status(404).json({ message: "Transaction not found" });
+    return;
+  }
+
+  res.status(200).json({ transaction });
+}
