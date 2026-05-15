@@ -24,6 +24,12 @@ const validTransaction = {
   description: "Mercado Extra",
 };
 
+const user2 = {
+  name: "Test user2",
+  email: "test2@contajunto.com",
+  password: "senha1234",
+};
+
 describe("POST /transactions", () => {
   it("should return 401 when no token is provided", async () => {
     const res = await request(app).post("/transactions").send(validTransaction);
@@ -104,7 +110,9 @@ describe("GET /transactions", () => {
 
     const now = new Date();
     const res = await request(app)
-      .get(`/transactions?month=${now.getMonth() + 1}&year=${now.getFullYear()}`)
+      .get(
+        `/transactions?month=${now.getMonth() + 1}&year=${now.getFullYear()}`,
+      )
       .set("Authorization", `Bearer ${accessToken}`);
 
     expect(res.status).toBe(200);
@@ -146,5 +154,67 @@ describe("GET /transactions", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.transactions).toEqual([]);
+  });
+});
+
+describe("GET /transactions/:id", () => {
+  it("should return 400 when params is not UUID valid", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .get("/transactions/abc")
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(res.status).toBe(400);
+  });
+
+  it("should return 404 transaction not found", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .get("/transactions/550e8400-e29b-41d4-a716-446655440000")
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(res.status).toBe(404);
+  });
+
+  it("should return 404 transaction not found", async () => {
+    const accessToken1 = await createAndAuthenticateUser();
+    const accessToken2 = await createAndAuthenticateUser(user2);
+
+    const res1 = await request(app)
+      .post("/transactions")
+      .set("Authorization", `Bearer ${accessToken1}`)
+      .send(validTransaction);
+
+    const res2 = await request(app)
+      .get(`/transactions/${res1.body.transaction.id}`)
+      .set("Authorization", `Bearer ${accessToken2}`);
+
+    expect(res2.status).toBe(404);
+  });
+
+  it("should return 200 Transaction successfully completed.", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .post("/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send(validTransaction);
+
+    const res2 = await request(app)
+      .get(`/transactions/${res.body.transaction.id}`)
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(res2.status).toBe(200);
+    expect(res2.body).toMatchObject({
+      transaction: {
+        id: expect.any(String),
+        description: expect.any(String),
+        type: expect.any(String),
+        amount: expect.any(String),
+        category: null,
+      },
+    });
   });
 });
