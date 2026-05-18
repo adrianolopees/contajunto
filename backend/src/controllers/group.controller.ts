@@ -147,7 +147,7 @@ export async function getInviteCode(req: Request, res: Response) {
   res.status(200).json({ inviteCode: user.familyGroup.inviteCode });
 }
 
-export async function deleteGroup(req: Request, res: Response) {
+export async function leaveGroup(req: Request, res: Response) {
   const userId = req.user.id;
   const user = await prisma.user.findUnique({
     where: { id: userId },
