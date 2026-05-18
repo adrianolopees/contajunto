@@ -157,6 +157,117 @@ describe("GET /transactions", () => {
   });
 });
 
+describe("PATCH /transactions/:id", () => {
+  it("should return 401 when no token is provided", async () => {
+    const res = await request(app)
+      .patch("/transactions/550e8400-e29b-41d4-a716-446655440000")
+      .send({ description: "Updated" });
+
+    expect(res.status).toBe(401);
+  });
+
+  it("should return 400 when params is not a valid UUID", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .patch("/transactions/abc")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ description: "Updated" });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("should return 400 when body has invalid fields", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const createRes = await request(app)
+      .post("/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send(validTransaction);
+
+    const res = await request(app)
+      .patch(`/transactions/${createRes.body.transaction.id}`)
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ amount: -50, type: "INVALID" });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("should return 404 when transaction does not exist", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .patch("/transactions/550e8400-e29b-41d4-a716-446655440000")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ description: "Updated" });
+
+    expect(res.status).toBe(404);
+  });
+
+  it("should return 404 when transaction belongs to another user", async () => {
+    const accessToken1 = await createAndAuthenticateUser();
+    const accessToken2 = await createAndAuthenticateUser(user2);
+
+    const createRes = await request(app)
+      .post("/transactions")
+      .set("Authorization", `Bearer ${accessToken1}`)
+      .send(validTransaction);
+
+    const res = await request(app)
+      .patch(`/transactions/${createRes.body.transaction.id}`)
+      .set("Authorization", `Bearer ${accessToken2}`)
+      .send({ description: "Trying to update" });
+
+    expect(res.status).toBe(404);
+  });
+
+  // TODO: implementar quando GET /categories existir — validar que categoryId de outro usuário retorna 403
+  it.todo("should return 403 when categoryId does not belong to the user");
+
+  it("should return 200 and update transaction fields successfully", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const createRes = await request(app)
+      .post("/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send(validTransaction);
+
+    const res = await request(app)
+      .patch(`/transactions/${createRes.body.transaction.id}`)
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ description: "Mercado Novo", amount: 99.9 });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      updatedTransaction: {
+        id: createRes.body.transaction.id,
+        description: "Mercado Novo",
+        amount: "99.9",
+      },
+    });
+  });
+
+  it("should return 200 when only one field is updated (partial update)", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const createRes = await request(app)
+      .post("/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send(validTransaction);
+
+    const res = await request(app)
+      .patch(`/transactions/${createRes.body.transaction.id}`)
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ type: "INCOME" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.updatedTransaction.type).toBe("INCOME");
+    expect(res.body.updatedTransaction.description).toBe(
+      validTransaction.description,
+    );
+  });
+});
+
 describe("GET /transactions/:id", () => {
   it("should return 400 when params is not UUID valid", async () => {
     const accessToken = await createAndAuthenticateUser();
