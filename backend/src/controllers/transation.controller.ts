@@ -1,7 +1,6 @@
 import { Response, Request } from "express";
 import z from "zod";
 import prisma from "../lib/prisma.js";
-import { Prisma } from "../generated/prisma/index.js";
 
 const transactionSchema = z.object({
   amount: z.number().positive().multipleOf(0.01),
@@ -89,6 +88,7 @@ export async function getTransaction(req: Request, res: Response) {
 export async function updateTransaction(req: Request, res: Response) {
   const transactionId = z.uuid().parse(req.params.id);
   const userId = req.user.id;
+
   const { amount, type, description, categoryId } =
     updateTransactionSchema.parse(req.body);
 
@@ -101,27 +101,24 @@ export async function updateTransaction(req: Request, res: Response) {
       return;
     }
   }
-  try {
-    const updatedTransaction = await prisma.transaction.update({
-      where: { id: transactionId, userId: userId },
-      data: {
-        amount: amount,
-        type: type,
-        description: description,
-        categoryId: categoryId,
-      },
-    });
-    res.status(200).json({ updatedTransaction });
-  } catch (err) {
-    if (
-      err instanceof Prisma.PrismaClientKnownRequestError &&
-      err.code === "P2025"
-    ) {
-      res.status(404).json({ message: "Transaction not found" });
-      return;
-    }
-    throw err;
+  const transaction = await prisma.transaction.findFirst({
+    where: { id: transactionId, userId: userId },
+  });
+
+  if (!transaction) {
+    res.status(404).json({ message: "Transaction not found" });
+    return;
   }
+  const updatedTransaction = await prisma.transaction.update({
+    where: { id: transactionId },
+    data: {
+      amount: amount,
+      type: type,
+      description: description,
+      categoryId: categoryId,
+    },
+  });
+  res.status(200).json({ updatedTransaction });
 }
 
 export async function deleteTransaction(req: Request, res: Response) {
