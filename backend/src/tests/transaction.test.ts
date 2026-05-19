@@ -29,11 +29,6 @@ const user2 = {
   email: "test2@contajunto.com",
   password: "senha1234",
 };
-const user3 = {
-  name: "Test user3",
-  email: "test3@contajunto.com",
-  password: "senha1234",
-};
 
 describe("POST /transactions", () => {
   it("should return 401 when no token is provided", async () => {
@@ -358,7 +353,7 @@ describe("DELETE /transactions/:id", () => {
 
   it("should return 404 when transaction belongs to another user", async () => {
     const accessToken1 = await createAndAuthenticateUser();
-    const accessToken2 = await createAndAuthenticateUser(user3);
+    const accessToken2 = await createAndAuthenticateUser(user2);
 
     const res1 = await request(app)
       .post("/transactions")
