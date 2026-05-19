@@ -69,10 +69,10 @@ export async function getTransactions(req: Request, res: Response) {
 }
 
 export async function getTransaction(req: Request, res: Response) {
-  const id = z.uuid().parse(req.params.id);
+  const transactionId = z.uuid().parse(req.params.id);
 
   const transaction = await prisma.transaction.findFirst({
-    where: { id, userId: req.user.id },
+    where: { id: transactionId, userId: req.user.id },
     include: {
       category: { select: { id: true, name: true, color: true, icon: true } },
     },
@@ -122,4 +122,23 @@ export async function updateTransaction(req: Request, res: Response) {
     }
     throw err;
   }
+}
+
+export async function deleteTransaction(req: Request, res: Response) {
+  const transactionId = z.uuid().parse(req.params.id);
+
+  const transaction = await prisma.transaction.findFirst({
+    where: { id: transactionId, userId: req.user.id },
+  });
+
+  if (!transaction) {
+    res.status(404).json({ message: "Transaction not found" });
+    return;
+  }
+
+  const deletedTransaction = await prisma.transaction.delete({
+    where: { id: transactionId },
+  });
+
+  res.status(200).json({ deletedTransaction });
 }

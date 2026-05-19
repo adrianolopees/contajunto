@@ -29,6 +29,11 @@ const user2 = {
   email: "test2@contajunto.com",
   password: "senha1234",
 };
+const user3 = {
+  name: "Test user3",
+  email: "test3@contajunto.com",
+  password: "senha1234",
+};
 
 describe("POST /transactions", () => {
   it("should return 401 when no token is provided", async () => {
@@ -327,5 +332,58 @@ describe("GET /transactions/:id", () => {
         category: null,
       },
     });
+  });
+});
+
+describe("DELETE /transactions/:id", () => {
+  it("should return 400 when params is not UUID valid", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .delete("/transactions/abc")
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(res.status).toBe(400);
+  });
+
+  it("should return 404 transaction not found", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .delete("/transactions/550e8400-e29b-41d4-a716-446655440000")
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(res.status).toBe(404);
+  });
+
+  it("should return 404 when transaction belongs to another user", async () => {
+    const accessToken1 = await createAndAuthenticateUser();
+    const accessToken2 = await createAndAuthenticateUser(user3);
+
+    const res1 = await request(app)
+      .post("/transactions")
+      .set("Authorization", `Bearer ${accessToken1}`)
+      .send(validTransaction);
+
+    const res2 = await request(app)
+      .delete(`/transactions/${res1.body.transaction.id}`)
+      .set("Authorization", `Bearer ${accessToken2}`);
+
+    expect(res2.status).toBe(404);
+  });
+
+  it("should return 200 transaction deleted with succefull", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res1 = await request(app)
+      .post("/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send(validTransaction);
+
+    const res2 = await request(app)
+      .delete(`/transactions/${res1.body.transaction.id}`)
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(res2.status).toBe(200);
   });
 });
