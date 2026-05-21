@@ -27,8 +27,10 @@ describe("POST /auth/register", () => {
 
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({
-      name: testUser.name,
-      email: testUser.email,
+      user: {
+        name: testUser.name,
+        email: testUser.email,
+      },
     });
     expect(res.body).not.toHaveProperty("passwordHash");
   });

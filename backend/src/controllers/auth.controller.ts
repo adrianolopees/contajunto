@@ -58,6 +58,7 @@ export async function register(req: Request, res: Response) {
   const user = await prisma.$transaction(async (tx) => {
     const newUser = await tx.user.create({
       data: { name, email, passwordHash },
+      omit: { passwordHash: true },
     });
 
     await tx.category.createMany({
@@ -71,13 +72,15 @@ export async function register(req: Request, res: Response) {
     return newUser;
   });
 
-  res.status(201).json({ id: user.id, name: user.name, email: user.email });
+  res.status(201).json({ user });
 }
 
 export async function login(req: Request, res: Response) {
   const { email, password } = loginSchema.parse(req.body);
 
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await prisma.user.findUnique({
+    where: { email },
+  });
 
   if (!user) {
     res.status(401).json({ message: "Invalid credentials" });

@@ -62,7 +62,7 @@ model Category {
   transactions  Transaction[]
   userId        String
   user          User @relation(fields: [userId], references: [id])
-
+  @@unique([userId, name])
 }
 
 model DefaultCategory {
