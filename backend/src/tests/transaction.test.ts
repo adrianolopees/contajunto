@@ -221,8 +221,31 @@ describe("PATCH /transactions/:id", () => {
     expect(res.status).toBe(404);
   });
 
-  // TODO: implementar quando GET /categories existir — validar que categoryId de outro usuário retorna 403
-  it.todo("should return 403 when categoryId does not belong to the user");
+  it("should return 403 when categoryId does not belong to the user", async () => {
+    const accessToken1 = await createAndAuthenticateUser();
+    const accessToken2 = await createAndAuthenticateUser({
+      name: "Outro",
+      email: "outro@email.com",
+      password: "senha1234",
+    });
+
+    const categoryRes = await request(app)
+      .post("/categories")
+      .set("Authorization", `Bearer ${accessToken2}`)
+      .send({ name: "Viagem", color: "green", icon: "plane" });
+
+    const transactionRes = await request(app)
+      .post("/transactions")
+      .set("Authorization", `Bearer ${accessToken1}`)
+      .send(validTransaction);
+
+    const res = await request(app)
+      .patch(`/transactions/${transactionRes.body.transaction.id}`)
+      .set("Authorization", `Bearer ${accessToken1}`)
+      .send({ categoryId: categoryRes.body.newCategory.id });
+
+    expect(res.status).toBe(403);
+  });
 
   it("should return 200 and update transaction fields successfully", async () => {
     const accessToken = await createAndAuthenticateUser();

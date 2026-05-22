@@ -8,12 +8,14 @@ const categorySchema = z.object({
   icon: z.string(),
 });
 
+const updateCategorySchema = categorySchema.partial();
+
 export async function createCategory(req: Request, res: Response) {
   const { name, color, icon } = categorySchema.parse(req.body);
   const userId = req.user.id;
 
   const existingCategory = await prisma.category.findFirst({
-    where: { userId: userId, name: name },
+    where: { userId, name },
   });
 
   if (existingCategory) {
@@ -22,7 +24,7 @@ export async function createCategory(req: Request, res: Response) {
   }
 
   const newCategory = await prisma.category.create({
-    data: { userId: userId, name: name, color: color, icon: icon },
+    data: { userId, name, color, icon },
     omit: { userId: true },
   });
 
@@ -36,4 +38,24 @@ export async function getCategories(req: Request, res: Response) {
   });
 
   res.status(200).json({ categories });
+}
+
+export async function updateCategory(req: Request, res: Response) {
+  const categoryId = z.uuid().parse(req.params.id);
+  const { name, color, icon } = updateCategorySchema.parse(req.body);
+
+  const category = await prisma.category.findFirst({
+    where: { id: categoryId, userId: req.user.id },
+  });
+  if (!category) {
+    res.status(404).json({ message: "Category not found" });
+    return;
+  }
+
+  const updatedCategory = await prisma.category.update({
+    where: { id: categoryId },
+    data: { name, color, icon },
+  });
+
+  res.status(200).json({ updatedCategory });
 }

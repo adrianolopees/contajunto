@@ -37,11 +37,11 @@ export async function createTransaction(req: Request, res: Response) {
 
   const transaction = await prisma.transaction.create({
     data: {
-      userId: userId,
-      amount: amount,
-      type: type,
-      description: description,
-      categoryId: categoryId,
+      userId,
+      amount,
+      type,
+      description,
+      categoryId,
       month: now.getMonth() + 1,
       year: now.getFullYear(),
       date: now,
@@ -94,7 +94,7 @@ export async function updateTransaction(req: Request, res: Response) {
 
   if (categoryId) {
     const category = await prisma.category.findFirst({
-      where: { id: categoryId, userId: userId },
+      where: { id: categoryId, userId },
     });
     if (!category) {
       res.status(403).json({ message: "Invalid category" });
@@ -102,7 +102,7 @@ export async function updateTransaction(req: Request, res: Response) {
     }
   }
   const transaction = await prisma.transaction.findFirst({
-    where: { id: transactionId, userId: userId },
+    where: { id: transactionId, userId },
   });
 
   if (!transaction) {
@@ -112,10 +112,10 @@ export async function updateTransaction(req: Request, res: Response) {
   const updatedTransaction = await prisma.transaction.update({
     where: { id: transactionId },
     data: {
-      amount: amount,
-      type: type,
-      description: description,
-      categoryId: categoryId,
+      amount,
+      type,
+      description,
+      categoryId,
     },
   });
   res.status(200).json({ updatedTransaction });

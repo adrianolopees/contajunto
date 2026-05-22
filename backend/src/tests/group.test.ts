@@ -298,6 +298,7 @@ describe("DELETE /groups/leave", () => {
 
     expect(res.status).toBe(404);
   });
+
   it("should return 200 and group remains with 2 users", async () => {
     const accessToken1 = await createAndAuthenticateUser();
     const accessToken2 = await createAndAuthenticateUser(user2);

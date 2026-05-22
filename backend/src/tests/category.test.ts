@@ -111,6 +111,7 @@ describe("POST /categories", () => {
 
     expect(res.status).toBe(409);
   });
+
   it("should return 409 when category name already exists as default", async () => {
     const accessToken = await createAndAuthenticateUser();
 
@@ -142,5 +143,96 @@ describe("POST /categories", () => {
 
     expect(res1.status).toBe(201);
     expect(res2.status).toBe(201);
+  });
+});
+
+describe("PATCH /categories", () => {
+  it("should return 401 when no token is provided", async () => {
+    const res = await request(app)
+      .patch("/categories/550e8400-e29b-41d4-a716-446655440000")
+      .send({ name: "Update", color: "Blue", icon: "Qualquer" });
+
+    expect(res.status).toBe(401);
+  });
+
+  it("should return 400 when params is not a valid UUID", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .patch("/categories/abc")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ name: "Update", color: "Blue", icon: "Qualquer" });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("should return 404 when category does not exist", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .patch("/categories/550e8400-e29b-41d4-a716-446655440000")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ name: "Update", color: "Blue", icon: "Qualquer" });
+
+    expect(res.status).toBe(404);
+  });
+
+  it("should return 200 and update category", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const created = await request(app)
+      .post("/categories")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ name: "Viagem", color: "green", icon: "plane" });
+
+    const res = await request(app)
+      .patch(`/categories/${created.body.newCategory.id}`)
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ name: "Viagem Atualizada", color: "blue", icon: "car" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.updatedCategory).toMatchObject({
+      name: "Viagem Atualizada",
+      color: "blue",
+      icon: "car",
+    });
+  });
+
+  it("should return 200 with partial update", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const created = await request(app)
+      .post("/categories")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ name: "Viagem", color: "green", icon: "plane" });
+
+    const res = await request(app)
+      .patch(`/categories/${created.body.newCategory.id}`)
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ color: "red" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.updatedCategory.color).toBe("red");
+  });
+
+  it("should return 404 when category belongs to another user", async () => {
+    const token1 = await createAndAuthenticateUser();
+    const token2 = await createAndAuthenticateUser({
+      name: "Outro",
+      email: "outro@email.com",
+      password: "senha1234",
+    });
+
+    const created = await request(app)
+      .post("/categories")
+      .set("Authorization", `Bearer ${token1}`)
+      .send({ name: "Viagem", color: "green", icon: "plane" });
+
+    const res = await request(app)
+      .patch(`/categories/${created.body.newCategory.id}`)
+      .set("Authorization", `Bearer ${token2}`)
+      .send({ name: "Tentativa" });
+
+    expect(res.status).toBe(404);
   });
 });
