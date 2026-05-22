@@ -196,6 +196,7 @@ describe("PATCH /categories", () => {
       color: "blue",
       icon: "car",
     });
+    expect(res.body.updatedCategory.userId).toBeUndefined();
   });
 
   it("should return 200 with partial update", async () => {

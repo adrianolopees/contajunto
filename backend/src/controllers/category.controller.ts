@@ -55,6 +55,7 @@ export async function updateCategory(req: Request, res: Response) {
   const updatedCategory = await prisma.category.update({
     where: { id: categoryId },
     data: { name, color, icon },
+    omit: { userId: true },
   });
 
   res.status(200).json({ updatedCategory });
