@@ -60,3 +60,22 @@ export async function updateCategory(req: Request, res: Response) {
 
   res.status(200).json({ updatedCategory });
 }
+
+export async function deleteCategory(req: Request, res: Response) {
+  const categoryId = z.uuid().parse(req.params.id);
+
+  const category = await prisma.category.findFirst({
+    where: { id: categoryId, userId: req.user.id },
+  });
+
+  if (!category) {
+    res.status(404).json({ message: "Category not found" });
+    return;
+  }
+
+  await prisma.category.delete({
+    where: { id: categoryId },
+  });
+
+  res.status(200).json({ message: "Category deleted successfully" });
+}

@@ -133,9 +133,9 @@ export async function deleteTransaction(req: Request, res: Response) {
     return;
   }
 
-  const deletedTransaction = await prisma.transaction.delete({
+  await prisma.transaction.delete({
     where: { id: transactionId },
   });
 
-  res.status(200).json({ deletedTransaction });
+  res.status(200).json({ message: "Transaction deleted successfully" });
 }

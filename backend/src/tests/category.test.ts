@@ -237,3 +237,67 @@ describe("PATCH /categories", () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe("DELETE /categories/:id", () => {
+  it("should return 401 when no token is provided", async () => {
+    const res = await request(app)
+      .delete("/categories/550e8400-e29b-41d4-a716-446655440000")
+      .send({ name: "teste", color: "teste", icon: "teste" });
+
+    expect(res.status).toBe(401);
+  });
+  it("should return 400 when params is not UUID valid", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .delete("/categories/abc")
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(res.status).toBe(400);
+  });
+
+  it("should return 404 category not found", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .delete("/categories/550e8400-e29b-41d4-a716-446655440000")
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(res.status).toBe(404);
+  });
+
+  it("should return 404 when category belongs to another user", async () => {
+    const accessToken1 = await createAndAuthenticateUser();
+    const accessToken2 = await createAndAuthenticateUser({
+      email: "other@email.com",
+      password: "otherpassword",
+      name: "otherteste",
+    });
+
+    const res1 = await request(app)
+      .post("/categories")
+      .set("Authorization", `Bearer ${accessToken1}`)
+      .send({ name: "teste2", color: "teste2", icon: "teste2" });
+
+    const res2 = await request(app)
+      .delete(`/categories/${res1.body.newCategory.id}`)
+      .set("Authorization", `Bearer ${accessToken2}`);
+
+    expect(res2.status).toBe(404);
+  });
+
+  it("should return 200 category deleted with succefull", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res1 = await request(app)
+      .post("/categories")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ name: "teste2", color: "teste2", icon: "teste2" });
+
+    const res2 = await request(app)
+      .delete(`/categories/${res1.body.newCategory.id}`)
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(res2.status).toBe(200);
+  });
+});
