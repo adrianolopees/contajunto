@@ -62,6 +62,7 @@ export async function getTransactions(req: Request, res: Response) {
       ...(month && { month }),
       ...(year && { year }),
     },
+    orderBy: { date: "desc" },
   });
 
   res.status(200).json({ transactions });
