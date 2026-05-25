@@ -21,8 +21,16 @@ const registerRateLimit = rateLimit({
 
 const router = Router();
 
-router.post("/register", registerRateLimit, register);
-router.post("/login", loginRateLimit, login);
+router.post(
+  "/register",
+  process.env.NODE_ENV === "test" ? [] : registerRateLimit,
+  register,
+);
+router.post(
+  "/login",
+  process.env.NODE_ENV === "test" ? [] : loginRateLimit,
+  login,
+);
 router.post("/refresh", refresh);
 router.post("/logout", logout);
 

@@ -24,6 +24,7 @@ const user3 = {
 };
 
 beforeEach(async () => {
+  await prisma.transaction.deleteMany();
   await prisma.category.deleteMany();
   await prisma.familyGroup.deleteMany();
   await prisma.refreshToken.deleteMany();
@@ -31,6 +32,7 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
+  await prisma.transaction.deleteMany();
   await prisma.category.deleteMany();
   await prisma.familyGroup.deleteMany();
   await prisma.refreshToken.deleteMany();
@@ -266,6 +268,201 @@ describe("GET /groups", () => {
         ]),
       },
     });
+  });
+});
+
+const validTransaction = {
+  amount: 49.9,
+  type: "EXPENSE",
+  description: "Mercado Extra",
+};
+
+async function createGroupWithTwoMembers() {
+  const accessToken1 = await createAndAuthenticateUser();
+  const groupRes = await request(app)
+    .post("/groups")
+    .set("Authorization", `Bearer ${accessToken1}`)
+    .send(testFamilyGroup);
+
+  const accessToken2 = await createAndAuthenticateUser(user2);
+  await request(app)
+    .post("/groups/join")
+    .set("Authorization", `Bearer ${accessToken2}`)
+    .send({ inviteCode: groupRes.body.group.inviteCode });
+
+  return { accessToken1, accessToken2 };
+}
+
+describe("GET /groups/transactions", () => {
+  it("should return 401 when no token is provided", async () => {
+    const res = await request(app).get("/groups/transactions");
+
+    expect(res.status).toBe(401);
+  });
+
+  it("should return 404 when user has no group", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .get("/groups/transactions")
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(res.status).toBe(404);
+  });
+
+  it("should return 200 and empty array when group has no transactions", async () => {
+    const { accessToken1 } = await createGroupWithTwoMembers();
+
+    const res = await request(app)
+      .get("/groups/transactions")
+      .set("Authorization", `Bearer ${accessToken1}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.transactions).toEqual([]);
+  });
+
+  it("should return transactions from both group members", async () => {
+    const { accessToken1, accessToken2 } = await createGroupWithTwoMembers();
+
+    await request(app)
+      .post("/transactions")
+      .set("Authorization", `Bearer ${accessToken1}`)
+      .send(validTransaction);
+
+    await request(app)
+      .post("/transactions")
+      .set("Authorization", `Bearer ${accessToken2}`)
+      .send({ ...validTransaction, description: "Conta de luz" });
+
+    const res = await request(app)
+      .get("/groups/transactions")
+      .set("Authorization", `Bearer ${accessToken1}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.transactions).toHaveLength(2);
+  });
+
+  it("should not return transactions from users outside the group", async () => {
+    const { accessToken1 } = await createGroupWithTwoMembers();
+    const outsiderToken = await createAndAuthenticateUser(user3);
+
+    await request(app)
+      .post("/transactions")
+      .set("Authorization", `Bearer ${outsiderToken}`)
+      .send(validTransaction);
+
+    const res = await request(app)
+      .get("/groups/transactions")
+      .set("Authorization", `Bearer ${accessToken1}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.transactions).toEqual([]);
+  });
+
+  it("should filter transactions by month and year", async () => {
+    const { accessToken1 } = await createGroupWithTwoMembers();
+
+    await request(app)
+      .post("/transactions")
+      .set("Authorization", `Bearer ${accessToken1}`)
+      .send(validTransaction);
+
+    const now = new Date();
+    const res = await request(app)
+      .get(
+        `/groups/transactions?month=${now.getMonth() + 1}&year=${now.getFullYear()}`,
+      )
+      .set("Authorization", `Bearer ${accessToken1}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.transactions).toHaveLength(1);
+  });
+
+  it("should return empty array when filter does not match", async () => {
+    const { accessToken1 } = await createGroupWithTwoMembers();
+
+    await request(app)
+      .post("/transactions")
+      .set("Authorization", `Bearer ${accessToken1}`)
+      .send(validTransaction);
+
+    const res = await request(app)
+      .get("/groups/transactions?month=1&year=2000")
+      .set("Authorization", `Bearer ${accessToken1}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.transactions).toEqual([]);
+  });
+
+  it("should return pagination metadata", async () => {
+    const { accessToken1 } = await createGroupWithTwoMembers();
+
+    await request(app)
+      .post("/transactions")
+      .set("Authorization", `Bearer ${accessToken1}`)
+      .send(validTransaction);
+
+    const res = await request(app)
+      .get("/groups/transactions")
+      .set("Authorization", `Bearer ${accessToken1}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      total: 1,
+      page: 1,
+      totalPages: 1,
+    });
+  });
+
+  it("should paginate across group members transactions", async () => {
+    const { accessToken1, accessToken2 } = await createGroupWithTwoMembers();
+
+    await Promise.all([
+      request(app)
+        .post("/transactions")
+        .set("Authorization", `Bearer ${accessToken1}`)
+        .send({ ...validTransaction, description: "Transacao 1" }),
+      request(app)
+        .post("/transactions")
+        .set("Authorization", `Bearer ${accessToken2}`)
+        .send({ ...validTransaction, description: "Transacao 2" }),
+      request(app)
+        .post("/transactions")
+        .set("Authorization", `Bearer ${accessToken1}`)
+        .send({ ...validTransaction, description: "Transacao 3" }),
+    ]);
+
+    const page1 = await request(app)
+      .get("/groups/transactions?limit=2&page=1")
+      .set("Authorization", `Bearer ${accessToken1}`);
+
+    expect(page1.status).toBe(200);
+    expect(page1.body.transactions).toHaveLength(2);
+    expect(page1.body).toMatchObject({ total: 3, page: 1, totalPages: 2 });
+
+    const page2 = await request(app)
+      .get("/groups/transactions?limit=2&page=2")
+      .set("Authorization", `Bearer ${accessToken1}`);
+
+    expect(page2.status).toBe(200);
+    expect(page2.body.transactions).toHaveLength(1);
+    expect(page2.body).toMatchObject({ total: 3, page: 2, totalPages: 2 });
+  });
+
+  it("should include category in transaction response", async () => {
+    const { accessToken1 } = await createGroupWithTwoMembers();
+
+    await request(app)
+      .post("/transactions")
+      .set("Authorization", `Bearer ${accessToken1}`)
+      .send(validTransaction);
+
+    const res = await request(app)
+      .get("/groups/transactions")
+      .set("Authorization", `Bearer ${accessToken1}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.transactions[0]).toHaveProperty("category");
   });
 });
 

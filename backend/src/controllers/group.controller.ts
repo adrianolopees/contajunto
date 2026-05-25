@@ -15,6 +15,13 @@ const joinSchema = z.object({
   inviteCode: z.uuid(),
 });
 
+const querySchema = z.object({
+  month: z.coerce.number().int().min(1).max(12).optional(),
+  year: z.coerce.number().int().optional(),
+  limit: z.coerce.number().int().positive().default(20),
+  page: z.coerce.number().int().positive().default(1),
+});
+
 export async function createGroup(req: Request, res: Response) {
   const { name } = groupSchema.parse(req.body);
   try {
@@ -173,4 +180,48 @@ export async function leaveGroup(req: Request, res: Response) {
     }
   });
   res.status(200).json({ message: "Successfully left the group" });
+}
+
+export async function getGroupTransactions(req: Request, res: Response) {
+  const { month, year: rawYear, limit, page } = querySchema.parse(req.query);
+  const userId = req.user.id;
+  const currentYear = new Date().getFullYear();
+  const year = month && !rawYear ? currentYear : rawYear;
+
+  const userWithGroup = await prisma.user.findFirst({
+    where: { id: userId },
+    include: { familyGroup: { include: { users: true } } },
+  });
+
+  if (!userWithGroup?.familyGroupId) {
+    res.status(404).json({ message: "Family group not existis" });
+    return;
+  }
+
+  const memberIds = userWithGroup.familyGroup?.users.map((user) => user.id);
+
+  const [transactions, total] = await Promise.all([
+    prisma.transaction.findMany({
+      where: {
+        userId: { in: memberIds },
+        ...(month && { month }),
+        ...(year && { year }),
+      },
+      include: { category: true },
+      orderBy: { date: "desc" },
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
+
+    prisma.transaction.count({
+      where: {
+        userId: { in: memberIds },
+        ...(month && { month }),
+        ...(year && { year }),
+      },
+    }),
+  ]);
+  const totalPages = Math.ceil(total / limit);
+
+  res.status(200).json({ transactions, total, page, totalPages });
 }

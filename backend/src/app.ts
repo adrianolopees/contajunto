@@ -13,7 +13,6 @@ import errorMiddleware from "./middlewares/error.middleware.js";
 const app = express();
 
 app.use(helmet());
-
 app.use(
   cors({
     origin: "http://localhost:5173",
@@ -22,14 +21,15 @@ app.use(
 );
 
 app.use(express.json());
-
 app.use(cookieParser());
+
 app.use("/health", healthRoutes);
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
 app.use("/groups", groupRoutes);
 app.use("/transactions", transactionRoutes);
 app.use("/categories", categorieRoutes);
+
 app.use(errorMiddleware);
 
 export default app;
