@@ -5,11 +5,24 @@ import {
   refresh,
   logout,
 } from "../controllers/auth.controller.js";
+import rateLimit from "express-rate-limit";
+
+const loginRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  message: { error: "Too manu ettempts, try again later" },
+});
+
+const registerRateLimit = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
+  message: { error: "Too manu attempts, try again later" },
+});
 
 const router = Router();
 
-router.post("/register", register);
-router.post("/login", login);
+router.post("/register", registerRateLimit, register);
+router.post("/login", loginRateLimit, login);
 router.post("/refresh", refresh);
 router.post("/logout", logout);
 
