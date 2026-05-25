@@ -6,6 +6,7 @@ import authRoutes from "./routes/auth.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import groupRoutes from "./routes/group.routes.js";
 import transactionRoutes from "./routes/transaction.routes.js";
+import healthRoutes from "./routes/health.routes.js";
 import categorieRoutes from "./routes/category.routes.js";
 import errorMiddleware from "./middlewares/error.middleware.js";
 
@@ -23,7 +24,7 @@ app.use(
 app.use(express.json());
 
 app.use(cookieParser());
-
+app.use("/health", healthRoutes);
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
 app.use("/groups", groupRoutes);
