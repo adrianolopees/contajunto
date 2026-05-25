@@ -207,7 +207,9 @@ export async function getGroupTransactions(req: Request, res: Response) {
         ...(month && { month }),
         ...(year && { year }),
       },
-      include: { category: true },
+      include: {
+        category: { select: { id: true, name: true, color: true, icon: true } },
+      },
       orderBy: { date: "desc" },
       skip: (page - 1) * limit,
       take: limit,
