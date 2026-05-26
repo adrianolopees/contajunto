@@ -159,25 +159,26 @@ export async function getTransactionsSummary(req: Request, res: Response) {
 
   const year = month && !rawYear ? currentYear : rawYear;
 
-  const expenseSummary = await prisma.transaction.aggregate({
-    where: {
-      userId,
-      ...(month && { month }),
-      ...(year && { year }),
-      type: "EXPENSE",
-    },
-    _sum: { amount: true },
-  });
-  const incomeSummary = await prisma.transaction.aggregate({
-    where: {
-      userId,
-      ...(month && { month }),
-      ...(year && { year }),
-      type: "INCOME",
-    },
-    _sum: { amount: true },
-  });
-
+  const [expenseSummary, incomeSummary] = await Promise.all([
+    prisma.transaction.aggregate({
+      where: {
+        userId,
+        ...(month && { month }),
+        ...(year && { year }),
+        type: "EXPENSE",
+      },
+      _sum: { amount: true },
+    }),
+    prisma.transaction.aggregate({
+      where: {
+        userId,
+        ...(month && { month }),
+        ...(year && { year }),
+        type: "INCOME",
+      },
+      _sum: { amount: true },
+    }),
+  ]);
   const income = Number(incomeSummary._sum.amount ?? 0);
   const expense = Number(expenseSummary._sum.amount ?? 0);
   const balance = income - expense;

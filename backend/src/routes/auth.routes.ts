@@ -10,13 +10,13 @@ import rateLimit from "express-rate-limit";
 const loginRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 10,
-  message: { error: "Too manu ettempts, try again later" },
+  message: { error: "Too many attempts, try again later" },
 });
 
 const registerRateLimit = rateLimit({
   windowMs: 60 * 60 * 1000,
   limit: 5,
-  message: { error: "Too manu attempts, try again later" },
+  message: { error: "Too many attempts, try again later" },
 });
 
 const router = Router();

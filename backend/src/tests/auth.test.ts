@@ -49,6 +49,46 @@ describe("POST /auth/register", () => {
 
     expect(res.status).toBe(400);
   });
+
+  it("should register without categories when defaultCategoryIds is omitted", async () => {
+    const res = await request(app).post("/auth/register").send(testUser);
+
+    expect(res.status).toBe(201);
+
+    const categories = await request(app)
+      .post("/auth/login")
+      .send({ email: testUser.email, password: testUser.password })
+      .then((loginRes) =>
+        request(app)
+          .get("/categories")
+          .set("Authorization", `Bearer ${loginRes.body.accessToken}`),
+      );
+
+    expect(categories.body.categories).toHaveLength(0);
+  });
+
+  it("should register and copy only selected default categories", async () => {
+    const defaultsRes = await request(app).get("/categories/default");
+    const firstTwo = defaultsRes.body.categoriesDefault
+      .slice(0, 2)
+      .map((c: { id: string }) => c.id);
+
+    const res = await request(app)
+      .post("/auth/register")
+      .send({ ...testUser, defaultCategoryIds: firstTwo });
+
+    expect(res.status).toBe(201);
+
+    const loginRes = await request(app)
+      .post("/auth/login")
+      .send({ email: testUser.email, password: testUser.password });
+
+    const categories = await request(app)
+      .get("/categories")
+      .set("Authorization", `Bearer ${loginRes.body.accessToken}`);
+
+    expect(categories.body.categories).toHaveLength(2);
+  });
 });
 
 describe("POST /auth/login", () => {

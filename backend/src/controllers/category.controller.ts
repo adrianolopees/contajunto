@@ -62,6 +62,12 @@ export async function updateCategory(req: Request, res: Response) {
   res.status(200).json({ updatedCategory });
 }
 
+export async function getDefaultCategories(req: Request, res: Response) {
+  const categoriesDefault = await prisma.defaultCategory.findMany();
+
+  res.status(200).json({ categoriesDefault });
+}
+
 export async function deleteCategory(req: Request, res: Response) {
   const categoryId = z.uuid().parse(req.params.id);
 

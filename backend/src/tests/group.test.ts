@@ -307,7 +307,7 @@ describe("GET /groups/transactions", () => {
       .get("/groups/transactions")
       .set("Authorization", `Bearer ${accessToken}`);
 
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(400);
   });
 
   it("should return 200 and empty array when group has no transactions", async () => {
@@ -463,6 +463,108 @@ describe("GET /groups/transactions", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.transactions[0]).toHaveProperty("category");
+  });
+});
+
+describe("GET /groups/transactions/summary", () => {
+  it("should return 401 when no token is provided", async () => {
+    const res = await request(app).get("/groups/transactions/summary");
+
+    expect(res.status).toBe(401);
+  });
+
+  it("should return 400 when user has no group", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .get("/groups/transactions/summary")
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(res.status).toBe(400);
+  });
+
+  it("should return zeroed values when group has no transactions", async () => {
+    const { accessToken1 } = await createGroupWithTwoMembers();
+
+    const res = await request(app)
+      .get("/groups/transactions/summary")
+      .set("Authorization", `Bearer ${accessToken1}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ income: 0, expense: 0, balance: 0 });
+  });
+
+  it("should aggregate income and expense from both members", async () => {
+    const { accessToken1, accessToken2 } = await createGroupWithTwoMembers();
+
+    await request(app)
+      .post("/transactions")
+      .set("Authorization", `Bearer ${accessToken1}`)
+      .send({ amount: 100, type: "INCOME", description: "Salário user1" });
+
+    await request(app)
+      .post("/transactions")
+      .set("Authorization", `Bearer ${accessToken2}`)
+      .send({ amount: 40, type: "EXPENSE", description: "Mercado user2" });
+
+    const res = await request(app)
+      .get("/groups/transactions/summary")
+      .set("Authorization", `Bearer ${accessToken1}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ income: 100, expense: 40, balance: 60 });
+  });
+
+  it("should not include transactions from users outside the group", async () => {
+    const { accessToken1 } = await createGroupWithTwoMembers();
+    const outsiderToken = await createAndAuthenticateUser(user3);
+
+    await request(app)
+      .post("/transactions")
+      .set("Authorization", `Bearer ${outsiderToken}`)
+      .send({ amount: 500, type: "INCOME", description: "Renda outsider" });
+
+    const res = await request(app)
+      .get("/groups/transactions/summary")
+      .set("Authorization", `Bearer ${accessToken1}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ income: 0, expense: 0, balance: 0 });
+  });
+
+  it("should filter summary by month and year", async () => {
+    const { accessToken1 } = await createGroupWithTwoMembers();
+
+    await request(app)
+      .post("/transactions")
+      .set("Authorization", `Bearer ${accessToken1}`)
+      .send({ amount: 200, type: "INCOME", description: "Salário" });
+
+    const now = new Date();
+    const res = await request(app)
+      .get(
+        `/groups/transactions/summary?month=${now.getMonth() + 1}&year=${now.getFullYear()}`,
+      )
+      .set("Authorization", `Bearer ${accessToken1}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ income: 200, expense: 0, balance: 200 });
+  });
+
+  it("should return zeroed values when filter does not match", async () => {
+    const { accessToken1 } = await createGroupWithTwoMembers();
+
+    await request(app)
+      .post("/transactions")
+      .set("Authorization", `Bearer ${accessToken1}`)
+      .send({ amount: 200, type: "INCOME", description: "Salário" });
+
+    const res = await request(app)
+      .get("/groups/transactions/summary?month=1&year=2000")
+      .set("Authorization", `Bearer ${accessToken1}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ income: 0, expense: 0, balance: 0 });
   });
 });
 

@@ -18,6 +18,28 @@ afterAll(async () => {
   await prisma.$disconnect();
 });
 
+describe("GET /categories/default", () => {
+  it("should return 200 with default categories without auth", async () => {
+    const res = await request(app).get("/categories/default");
+
+    expect(res.status).toBe(200);
+    expect(res.body.categoriesDefault).toBeInstanceOf(Array);
+    expect(res.body.categoriesDefault.length).toBeGreaterThan(0);
+  });
+
+  it("should return default categories with expected fields", async () => {
+    const res = await request(app).get("/categories/default");
+
+    expect(res.status).toBe(200);
+    expect(res.body.categoriesDefault[0]).toMatchObject({
+      id: expect.any(String),
+      name: expect.any(String),
+      color: expect.any(String),
+      icon: expect.any(String),
+    });
+  });
+});
+
 describe("GET /categories", () => {
   it("should return 401 when no token is provided", async () => {
     const res = await request(app).get("/categories");
@@ -112,7 +134,7 @@ describe("POST /categories", () => {
     expect(res.status).toBe(409);
   });
 
-  it("should return 409 when category name already exists as default", async () => {
+  it("should return 201 when category name matches a default (user starts with no categories)", async () => {
     const accessToken = await createAndAuthenticateUser();
 
     const res = await request(app)
@@ -120,7 +142,7 @@ describe("POST /categories", () => {
       .set("Authorization", `Bearer ${accessToken}`)
       .send({ name: "Saúde", color: "blue", icon: "plane" });
 
-    expect(res.status).toBe(409);
+    expect(res.status).toBe(201);
   });
 
   it("should allow two users to have a category with the same name", async () => {

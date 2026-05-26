@@ -188,17 +188,21 @@ export async function getGroupTransactions(req: Request, res: Response) {
   const currentYear = new Date().getFullYear();
   const year = month && !rawYear ? currentYear : rawYear;
 
-  const userWithGroup = await prisma.user.findFirst({
+  const user = await prisma.user.findUnique({
     where: { id: userId },
-    include: { familyGroup: { include: { users: true } } },
+    select: { familyGroupId: true },
   });
 
-  if (!userWithGroup?.familyGroupId) {
-    res.status(404).json({ message: "Family group not existis" });
+  if (!user?.familyGroupId) {
+    res.status(400).json({ message: "User does not belong to a group" });
     return;
   }
+  const members = await prisma.user.findMany({
+    where: { familyGroupId: user.familyGroupId },
+    select: { id: true },
+  });
 
-  const memberIds = userWithGroup.familyGroup?.users.map((user) => user.id);
+  const memberIds = members.map((user) => user.id);
 
   const [transactions, total] = await Promise.all([
     prisma.transaction.findMany({
@@ -226,4 +230,54 @@ export async function getGroupTransactions(req: Request, res: Response) {
   const totalPages = Math.ceil(total / limit);
 
   res.status(200).json({ transactions, total, page, totalPages });
+}
+
+export async function getGroupTransactionsSummary(req: Request, res: Response) {
+  const { month, year: rawYear } = querySchema.parse(req.query);
+  const currentYear = new Date().getFullYear();
+  const year = month && !rawYear ? currentYear : rawYear;
+  const userId = req.user.id;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { familyGroupId: true },
+  });
+
+  if (!user?.familyGroupId) {
+    res.status(400).json({ message: "User does not belong to a group" });
+    return;
+  }
+  const members = await prisma.user.findMany({
+    where: { familyGroupId: user.familyGroupId },
+    select: { id: true },
+  });
+
+  const memberIds = members.map((user) => user.id);
+
+  const [expenseSummary, incomeSummary] = await Promise.all([
+    prisma.transaction.aggregate({
+      where: {
+        userId: { in: memberIds },
+        ...(month && { month }),
+        ...(year && { year }),
+        type: "EXPENSE",
+      },
+      _sum: { amount: true },
+    }),
+
+    prisma.transaction.aggregate({
+      where: {
+        userId: { in: memberIds },
+        ...(month && { month }),
+        ...(year && { year }),
+        type: "INCOME",
+      },
+      _sum: { amount: true },
+    }),
+  ]);
+  const income = Number(incomeSummary._sum.amount ?? 0);
+  const expense = Number(expenseSummary._sum.amount ?? 0);
+  const balance = income - expense;
+
+  res.status(200).json({ income, expense, balance });
 }
