@@ -18,8 +18,6 @@ const joinSchema = z.object({
 const querySchema = z.object({
   month: z.coerce.number().int().min(1).max(12).optional(),
   year: z.coerce.number().int().optional(),
-  limit: z.coerce.number().int().positive().default(20),
-  page: z.coerce.number().int().positive().default(1),
 });
 
 export async function createGroup(req: Request, res: Response) {
@@ -183,10 +181,12 @@ export async function leaveGroup(req: Request, res: Response) {
 }
 
 export async function getGroupTransactions(req: Request, res: Response) {
-  const { month, year: rawYear, limit, page } = querySchema.parse(req.query);
+  const { month: rawMonth, year: rawYear } = querySchema.parse(req.query);
   const userId = req.user.id;
-  const currentYear = new Date().getFullYear();
-  const year = month && !rawYear ? currentYear : rawYear;
+
+  const now = new Date();
+  const month = rawMonth || now.getMonth() + 1;
+  const year = rawYear || now.getFullYear();
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -204,39 +204,28 @@ export async function getGroupTransactions(req: Request, res: Response) {
 
   const memberIds = members.map((user) => user.id);
 
-  const [transactions, total] = await Promise.all([
-    prisma.transaction.findMany({
-      where: {
-        userId: { in: memberIds },
-        ...(month && { month }),
-        ...(year && { year }),
-      },
-      include: {
-        category: { select: { id: true, name: true, color: true, icon: true } },
-      },
-      orderBy: { date: "desc" },
-      skip: (page - 1) * limit,
-      take: limit,
-    }),
+  const transactions = await prisma.transaction.findMany({
+    where: {
+      userId: { in: memberIds },
+      month,
+      year,
+    },
+    include: {
+      category: { select: { id: true, name: true, color: true, icon: true } },
+    },
+    orderBy: { date: "desc" },
+  });
 
-    prisma.transaction.count({
-      where: {
-        userId: { in: memberIds },
-        ...(month && { month }),
-        ...(year && { year }),
-      },
-    }),
-  ]);
-  const totalPages = Math.ceil(total / limit);
-
-  res.status(200).json({ transactions, total, page, totalPages });
+  res.status(200).json({ transactions });
 }
 
 export async function getGroupTransactionsSummary(req: Request, res: Response) {
-  const { month, year: rawYear } = querySchema.parse(req.query);
-  const currentYear = new Date().getFullYear();
-  const year = month && !rawYear ? currentYear : rawYear;
+  const { month: rawMonth, year: rawYear } = querySchema.parse(req.query);
   const userId = req.user.id;
+
+  const now = new Date();
+  const month = rawMonth || now.getMonth() + 1;
+  const year = rawYear || now.getFullYear();
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -258,8 +247,8 @@ export async function getGroupTransactionsSummary(req: Request, res: Response) {
     prisma.transaction.aggregate({
       where: {
         userId: { in: memberIds },
-        ...(month && { month }),
-        ...(year && { year }),
+        month,
+        year,
         type: "EXPENSE",
       },
       _sum: { amount: true },
@@ -268,8 +257,8 @@ export async function getGroupTransactionsSummary(req: Request, res: Response) {
     prisma.transaction.aggregate({
       where: {
         userId: { in: memberIds },
-        ...(month && { month }),
-        ...(year && { year }),
+        month,
+        year,
         type: "INCOME",
       },
       _sum: { amount: true },

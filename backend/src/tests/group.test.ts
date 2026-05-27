@@ -394,61 +394,6 @@ describe("GET /groups/transactions", () => {
     expect(res.body.transactions).toEqual([]);
   });
 
-  it("should return pagination metadata", async () => {
-    const { accessToken1 } = await createGroupWithTwoMembers();
-
-    await request(app)
-      .post("/transactions")
-      .set("Authorization", `Bearer ${accessToken1}`)
-      .send(validTransaction);
-
-    const res = await request(app)
-      .get("/groups/transactions")
-      .set("Authorization", `Bearer ${accessToken1}`);
-
-    expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({
-      total: 1,
-      page: 1,
-      totalPages: 1,
-    });
-  });
-
-  it("should paginate across group members transactions", async () => {
-    const { accessToken1, accessToken2 } = await createGroupWithTwoMembers();
-
-    await Promise.all([
-      request(app)
-        .post("/transactions")
-        .set("Authorization", `Bearer ${accessToken1}`)
-        .send({ ...validTransaction, description: "Transacao 1" }),
-      request(app)
-        .post("/transactions")
-        .set("Authorization", `Bearer ${accessToken2}`)
-        .send({ ...validTransaction, description: "Transacao 2" }),
-      request(app)
-        .post("/transactions")
-        .set("Authorization", `Bearer ${accessToken1}`)
-        .send({ ...validTransaction, description: "Transacao 3" }),
-    ]);
-
-    const page1 = await request(app)
-      .get("/groups/transactions?limit=2&page=1")
-      .set("Authorization", `Bearer ${accessToken1}`);
-
-    expect(page1.status).toBe(200);
-    expect(page1.body.transactions).toHaveLength(2);
-    expect(page1.body).toMatchObject({ total: 3, page: 1, totalPages: 2 });
-
-    const page2 = await request(app)
-      .get("/groups/transactions?limit=2&page=2")
-      .set("Authorization", `Bearer ${accessToken1}`);
-
-    expect(page2.status).toBe(200);
-    expect(page2.body.transactions).toHaveLength(1);
-    expect(page2.body).toMatchObject({ total: 3, page: 2, totalPages: 2 });
-  });
-
   it("should include category in transaction response", async () => {
     const { accessToken1 } = await createGroupWithTwoMembers();
 
