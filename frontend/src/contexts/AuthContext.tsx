@@ -1,6 +1,6 @@
 import { createContext, useState, useEffect } from "react";
 import type { ReactNode } from "react";
-import { api } from "../lib/api";
+import { api, setAuthToken } from "../lib/api";
 
 interface User {
   id: string;
@@ -35,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const res = await api.post("/auth/refresh");
         setAccessToken(res.data.accessToken);
+        setAuthToken(res.data.accessToken);
         setUser(res.data.user);
       } catch {
         setUser(null);
@@ -49,6 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function login(email: string, password: string) {
     const res = await api.post("/auth/login", { email, password });
     setAccessToken(res.data.accessToken);
+    setAuthToken(res.data.accessToken);
     setUser(res.data.user);
   }
 
@@ -69,6 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function logout() {
     await api.post("/auth/logout");
     setAccessToken(null);
+    setAuthToken(null);
     setUser(null);
   }
 
