@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "./hooks/useAuth";
+import { Login } from "./pages/auth/Login";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { accessToken, isLoading } = useAuth();
@@ -13,7 +14,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/login" element={<div>Login</div>} />
+        <Route path="/login" element={<Login />} />
         <Route path="/register" element={<div>Register</div>} />
         <Route
           path="/dashboard"

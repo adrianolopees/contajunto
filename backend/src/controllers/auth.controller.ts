@@ -38,6 +38,7 @@ const loginSchema = z.object({
     .pipe(z.email({ error: "E-mail inválido" })),
   password: z
     .string({ error: "Senha é obrigatória" })
+    .min(8, { message: "A senha deve ter no mínimo 8 caracteres" })
     .max(72, { error: "A senha não pode exceder 72 caracteres" }),
 });
 
@@ -119,7 +120,15 @@ export async function login(req: Request, res: Response) {
   });
 
   res.cookie("refreshToken", refreshToken, COOKIE_OPTIONS);
-  res.status(200).json({ accessToken });
+  res.status(200).json({
+    accessToken,
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      familyGroupId: user.familyGroupId,
+    },
+  });
 }
 
 export async function refresh(req: Request, res: Response) {
@@ -147,6 +156,15 @@ export async function refresh(req: Request, res: Response) {
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 7);
 
+  const user = await prisma.user.findUnique({
+    where: { id: stored.userId },
+  });
+
+  if (!user) {
+    res.status(401).json({ message: "Invalid credentials" });
+    return;
+  }
+
   await prisma.$transaction([
     prisma.refreshToken.deleteMany({ where: { token } }),
     prisma.refreshToken.create({
@@ -159,7 +177,15 @@ export async function refresh(req: Request, res: Response) {
   });
 
   res.cookie("refreshToken", newRefreshToken, COOKIE_OPTIONS);
-  res.status(200).json({ accessToken });
+  res.status(200).json({
+    accessToken,
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      familyGroupId: user.familyGroupId,
+    },
+  });
 }
 
 export async function logout(req: Request, res: Response) {
