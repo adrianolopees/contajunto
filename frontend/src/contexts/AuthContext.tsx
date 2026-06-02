@@ -1,6 +1,6 @@
 import { createContext, useState, useEffect } from "react";
 import type { ReactNode } from "react";
-import { api, setAuthToken } from "../lib/api";
+import { api, setAuthToken, setUnauthenticatedCallback } from "../lib/api";
 
 interface User {
   id: string;
@@ -29,6 +29,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    setUnauthenticatedCallback(() => {
+      setUser(null);
+      setAccessToken(null);
+      setAuthToken(null);
+    });
+  }, []);
 
   useEffect(() => {
     async function restoreSession() {
