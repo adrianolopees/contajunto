@@ -24,7 +24,7 @@ const loginSchema = z.object({
     .max(72, { message: "A senha não pode exceder 72 caracteres" }),
 });
 
-export function Login() {
+export default function Login() {
   const { login } = useAuth();
   const {
     register,
@@ -95,7 +95,11 @@ export function Login() {
         <CardFooter className="flex-col gap-2">
           <p>
             Não tem conta?{""}
-            <Button variant="link" className="p-0 h-auto cursor-pointer">
+            <Button
+              variant="link"
+              className="p-0 h-auto cursor-pointer"
+              onClick={() => navigate("/register")}
+            >
               Inscrever-se
             </Button>
           </p>
