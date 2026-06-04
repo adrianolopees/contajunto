@@ -52,6 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
       }
     }
+
     restoreSession();
   }, []);
 
@@ -77,10 +78,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function logout() {
-    await api.post("/auth/logout");
-    setAccessToken(null);
-    setAuthToken(null);
-    setUser(null);
+    try {
+      await api.post("/auth/logout");
+    } finally {
+      setAccessToken(null);
+      setAuthToken(null);
+      setUser(null);
+    }
   }
 
   return (
