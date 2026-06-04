@@ -17,6 +17,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import axios from "axios";
 
 const registerSchema = z
   .object({
@@ -60,6 +61,7 @@ export default function Register() {
   const {
     register: registerField,
     handleSubmit,
+    setError,
     trigger,
     formState: { errors },
   } = useForm({ resolver: zodResolver(registerSchema) });
@@ -97,8 +99,13 @@ export default function Register() {
       await login(data.email, data.password);
       toast.success("Conta criada com sucesso!");
       navigate("/dashboard");
-    } catch {
-      toast.error("Erro ao criar conta. Tente novamente.");
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 409) {
+        setStep(1);
+        setError("email", { message: "Email já cadastrado" });
+      } else {
+        toast.error("Erro ao criar conta. Tente novamente.");
+      }
     }
   }
   return (
