@@ -7,11 +7,9 @@ export interface Category {
   icon: string;
 }
 
-export async function createCategory(data: {
-  name: string;
-  color: string;
-  icon: string;
-}): Promise<Category> {
+export async function createCategory(
+  data: Omit<Category, "id">,
+): Promise<Category> {
   const res = await api.post("/categories", data);
   return res.data.newCategory;
 }
@@ -23,11 +21,7 @@ export async function getCategories(): Promise<Category[]> {
 
 export async function updateCategory(
   id: string,
-  data: {
-    name?: string;
-    color?: string;
-    icon?: string;
-  },
+  data: Partial<Omit<Category, "id">>,
 ): Promise<Category> {
   const res = await api.patch(`/categories/${id}`, data);
   return res.data.updatedCategory;
