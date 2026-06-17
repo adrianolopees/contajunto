@@ -53,7 +53,6 @@ export async function createTransaction(req: Request, res: Response) {
 
 export async function getTransactions(req: Request, res: Response) {
   const { month: rawMonth, year: rawYear } = querySchema.parse(req.query);
-  const userId = req.user.id;
 
   const now = new Date();
   const month = rawMonth || now.getMonth() + 1;
@@ -61,9 +60,12 @@ export async function getTransactions(req: Request, res: Response) {
 
   const transactions = await prisma.transaction.findMany({
     where: {
-      userId,
+      userId: req.user.id,
       month,
       year,
+    },
+    include: {
+      category: { select: { id: true, name: true, color: true, icon: true } },
     },
     orderBy: { date: "desc" },
   });
