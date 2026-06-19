@@ -4,6 +4,11 @@ import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 import AppShell from "./components/layout/AppShell";
 import type React from "react";
+import Dashboard from "./pages/Dashboard";
+import { Profile } from "./pages/profile/Profile";
+import { GroupDashboard } from "./pages/group/GroupDashboard";
+import { CategoryList } from "./pages/categories/CategoryList";
+import { TransactionList } from "./pages/transactions/TransactionList";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { accessToken, isLoading } = useAuth();
@@ -48,7 +53,11 @@ export default function App() {
             </PrivateRoute>
           }
         >
-          <Route path="/dashboard" element={<div>Dashboard página</div>} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/transactions" element={<TransactionList />} />
+          <Route path="/categories" element={<CategoryList />} />
+          <Route path="/familyGroup" element={<GroupDashboard />} />
+          <Route path="/me" element={<Profile />} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
