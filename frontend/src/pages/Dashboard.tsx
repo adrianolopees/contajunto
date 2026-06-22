@@ -6,6 +6,7 @@ import {
   getTransactionsSummary,
 } from "@/services/transactions";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
+import MonthPicker from "@/components/MonthPicker";
 
 export default function Dashboard() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -49,14 +50,12 @@ export default function Dashboard() {
 
   return (
     <div className="px-4 py-4 space-y-4">
-      <div className=" flex items-center justify-between  py-2">
-        <button onClick={handlePrevMonth}>{"<"}</button>
-        <span>
-          {new Date(year, month - 1).toLocaleString("pt-BR", { month: "long" })}{" "}
-          {year}
-        </span>
-        <button onClick={handleNextMonth}>{">"}</button>
-      </div>
+      <MonthPicker
+        month={month}
+        year={year}
+        onPrev={handlePrevMonth}
+        onNext={handleNextMonth}
+      />
 
       <div className="grid grid-cols-3 gap-4 ">
         <Card>

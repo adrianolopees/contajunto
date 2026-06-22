@@ -17,8 +17,6 @@ export default function AppShell() {
   async function handleLogout() {
     try {
       await logout();
-    } catch {
-      // logout() já limpou o estado local via finally
     } finally {
       navigate("/login");
     }
