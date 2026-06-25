@@ -26,7 +26,7 @@ export default function TransactionList() {
     fetchCategories();
   }, []);
 
-  // useCallback memoiza a função — só recria quando month/year mudam
+  // useCallback memoriza a função — só recria quando month/year mudam
   const loadTransactions = useCallback(async () => {
     try {
       setIsLoading(true);
