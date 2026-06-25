@@ -180,3 +180,25 @@ export async function getTransactionsSummary(req: Request, res: Response) {
 
   res.status(200).json({ income, expense, balance });
 }
+
+export async function getCategorySpending(req: Request, res: Response) {
+  const { month: rawMonth, year: rawYear } = querySchema.parse(req.query);
+  const userId = req.user.id;
+
+  const now = new Date();
+  const month = rawMonth || now.getMonth() + 1;
+  const year = rawYear || now.getFullYear();
+
+  const spending = await prisma.transaction.groupBy({
+    by: ["categoryId"],
+    where: { userId, month, year },
+    _sum: { amount: true },
+  });
+
+  const categorySpending = spending.map((item) => ({
+    categoryId: item.categoryId,
+    total: Number(item._sum.amount ?? 0),
+  }));
+
+  res.status(200).json({ categorySpending });
+}
