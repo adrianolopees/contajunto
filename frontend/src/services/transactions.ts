@@ -24,6 +24,11 @@ export interface TransactionsSummary {
   balance: number;
 }
 
+export interface CategorySpending {
+  categoryId: string | null;
+  total: number;
+}
+
 export async function createTransaction(data: {
   amount: number;
   type: "INCOME" | "EXPENSE";
@@ -70,4 +75,12 @@ export async function getTransactionsSummary(params?: {
 }): Promise<TransactionsSummary> {
   const res = await api.get("/transactions/summary", { params });
   return res.data;
+}
+
+export async function getCategorySpending(params?: {
+  month?: number;
+  year?: number;
+}): Promise<CategorySpending[]> {
+  const res = await api.get("/transactions/summary/by-category", { params });
+  return res.data.categorySpending;
 }

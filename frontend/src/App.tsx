@@ -7,7 +7,7 @@ import type React from "react";
 import Dashboard from "./pages/Dashboard";
 import { Profile } from "./pages/profile/Profile";
 import { GroupDashboard } from "./pages/group/GroupDashboard";
-import { CategoryList } from "./pages/categories/CategoryList";
+import CategoryList from "./pages/categories/CategoryList";
 import TransactionList from "./pages/transactions/TransactionList";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {

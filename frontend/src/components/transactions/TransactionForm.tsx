@@ -1,6 +1,7 @@
 import type { Category } from "@/services/categories";
 import {
   createTransaction,
+  deleteTransaction,
   updateTransaction,
   type Transaction,
 } from "@/services/transactions";
@@ -19,6 +20,8 @@ import { Label } from "../ui/label";
 import { Input } from "../ui/input";
 import toast from "react-hot-toast";
 import { useEffect } from "react";
+import { Button } from "../ui/button";
+import { Trash2 } from "lucide-react";
 
 const TransactionFormShchema = z.object({
   type: z.enum(["EXPENSE", "INCOME"]),
@@ -81,6 +84,18 @@ export default function TransactionForm({
         await updateTransaction(transaction.id, payload);
         toast.success("Transação atualizada com sucesso!");
       }
+      onOpenChange(false);
+      onSuccess();
+    } catch {
+      toast.error("Mensagem de erro");
+    }
+  }
+
+  async function handleDelete() {
+    try {
+      if (!transaction) return;
+      await deleteTransaction(transaction.id);
+      toast.success("Transação deletada com sucesso!");
       onOpenChange(false);
       onSuccess();
     } catch {
@@ -159,7 +174,18 @@ export default function TransactionForm({
               </Select>
             )}
           ></Controller>
-          <button type="submit">Salvar</button>
+          <div className="flex justify-between">
+            {transaction && (
+              <Button
+                variant="destructive"
+                type="button"
+                onClick={handleDelete}
+              >
+                <Trash2 size={16} /> Excluir
+              </Button>
+            )}
+            <Button type="submit">Salvar</Button>
+          </div>
         </form>
       </DialogContent>
     </Dialog>
