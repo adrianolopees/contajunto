@@ -4,6 +4,7 @@ import { getCategories } from "@/services/categories";
 import type { CategorySpending } from "@/services/transactions";
 import { getCategorySpending } from "@/services/transactions";
 import MonthPicker from "@/components/MonthPicker";
+import * as Icons from "lucide-react";
 import { Plus } from "lucide-react";
 import CategoryForm from "@/components/categories/CategoryForm";
 
@@ -93,18 +94,22 @@ export default function CategoryList() {
         </p>
       ) : (
         <ul className="mt-4 grid grid-cols-2 gap-3">
-          {enrichedCategories.map((category) => (
-            <li
-              key={category.id}
-              onClick={() => handleEditCategory(category)}
-              className="cursor-pointer rounded-lg border p-3"
-            >
-              <p className="font-medium">{category.name}</p>
-              <p className="text-sm text-muted-foreground">
-                R$ {category.total.toFixed(2)}
-              </p>
-            </li>
-          ))}
+          {enrichedCategories.map((category) => {
+            const Icon = Icons[category.icon as keyof typeof Icons] as Icons.LucideIcon;
+            return (
+              <li
+                key={category.id}
+                onClick={() => handleEditCategory(category)}
+                className="cursor-pointer rounded-lg border p-3"
+              >
+                {Icon && <Icon size={20} color={category.color} />}
+                <p className="font-medium">{category.name}</p>
+                <p className="text-sm text-muted-foreground">
+                  R$ {category.total.toFixed(2)}
+                </p>
+              </li>
+            );
+          })}
         </ul>
       )}
       <button

@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import axios from "axios";
+import * as Icons from "lucide-react";
 
 const registerSchema = z
   .object({
@@ -184,20 +185,24 @@ export default function Register() {
                 <div className="grid gap-2">
                   <Label>Categorias (opcional)</Label>
                   <div className="flex flex-wrap gap-2">
-                    {categories.map((category) => (
-                      <label
-                        key={category.id}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border cursor-pointer text-sm has-checked:bg-primary has-checked:text-primary-foreground has-checked:border-primary"
-                      >
-                        <input
-                          type="checkbox"
-                          value={category.id}
-                          className="sr-only"
-                          {...registerField("defaultCategoryIds")}
-                        />
-                        {category.icon} {category.name}
-                      </label>
-                    ))}
+                    {categories.map((category) => {
+                      const Icon = Icons[category.icon as keyof typeof Icons] as Icons.LucideIcon;
+                      return (
+                        <label
+                          key={category.id}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border cursor-pointer text-sm has-checked:bg-primary has-checked:text-primary-foreground has-checked:border-primary"
+                        >
+                          <input
+                            type="checkbox"
+                            value={category.id}
+                            className="sr-only"
+                            {...registerField("defaultCategoryIds")}
+                          />
+                          {Icon && <Icon size={14} color={category.color} />}
+                          {category.name}
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
               )}
