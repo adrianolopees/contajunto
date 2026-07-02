@@ -21,6 +21,7 @@ interface AuthContextData {
     password: string,
     defaultCategoryIds: string[],
   ) => Promise<void>;
+  updateUser: (partial: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextData | null>(null);
@@ -86,10 +87,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
     }
   }
+  function updateUser(partial: Partial<User>) {
+    setUser((prev) => (prev ? { ...prev, ...partial } : prev));
+  }
 
   return (
     <AuthContext.Provider
-      value={{ user, accessToken, isLoading, login, logout, register }}
+      value={{
+        user,
+        accessToken,
+        isLoading,
+        login,
+        logout,
+        register,
+        updateUser,
+      }}
     >
       {children}
     </AuthContext.Provider>
