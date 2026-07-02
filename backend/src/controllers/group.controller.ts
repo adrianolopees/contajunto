@@ -68,7 +68,7 @@ export async function joinGroup(req: Request, res: Response) {
     return;
   }
   try {
-    await prisma.$transaction(async (tx) => {
+    const groupId = await prisma.$transaction(async (tx) => {
       const group = await tx.familyGroup.findUnique({
         where: { inviteCode },
         include: { _count: { select: { users: true } } },
@@ -76,7 +76,7 @@ export async function joinGroup(req: Request, res: Response) {
       if (!group) throw new Error("INVALID_INVITE");
       if (group._count.users >= 2) throw new Error("GROUP_FULL");
 
-      await tx.user.update({
+      const updatedGroup = await tx.user.update({
         where: {
           id: req.user.id,
           familyGroupId: null,
@@ -88,9 +88,10 @@ export async function joinGroup(req: Request, res: Response) {
         where: { id: group.id },
         data: { inviteCode: crypto.randomUUID() },
       });
+      return updatedGroup;
     });
 
-    res.status(200).json({ message: "Join group successfully" });
+    res.status(200).json({ group: { familyGroupId: groupId.familyGroupId } });
   } catch (err) {
     if (
       err instanceof Prisma.PrismaClientKnownRequestError &&
@@ -177,7 +178,7 @@ export async function leaveGroup(req: Request, res: Response) {
       await tx.familyGroup.delete({ where: { id: user.familyGroupId! } });
     }
   });
-  res.status(200).json({ message: "Successfully left the group" });
+  res.status(200).json({ group: { familyGroupId: null } });
 }
 
 export async function getGroupTransactions(req: Request, res: Response) {
