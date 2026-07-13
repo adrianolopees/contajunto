@@ -19,6 +19,12 @@ const registerRateLimit = rateLimit({
   message: { error: "Too many attempts, try again later" },
 });
 
+const refreshRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 60,
+  message: { error: "Too many attempts, try again later" },
+});
+
 const router = Router();
 
 router.post(
@@ -31,7 +37,11 @@ router.post(
   process.env.NODE_ENV === "test" ? [] : loginRateLimit,
   login,
 );
-router.post("/refresh", refresh);
+router.post(
+  "/refresh",
+  process.env.NODE_ENV === "test" ? [] : refreshRateLimit,
+  refresh,
+);
 router.post("/logout", logout);
 
 export default router;

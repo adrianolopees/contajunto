@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import { getTransactions, type Transaction } from "@/services/transactions";
 import { getCategories, type Category } from "@/services/categories";
 import MonthPicker from "@/components/MonthPicker";
 import TransactionForm from "@/components/transactions/TransactionForm";
+import { useMonthNavigation } from "@/hooks/useMonthNavigation";
+import { formatCurrency } from "@/lib/format";
 import { Plus } from "lucide-react";
 
 export default function TransactionList() {
-  const now = new Date();
-  const [month, setMonth] = useState(now.getMonth() + 1); // getMonth() é 0-indexed
-  const [year, setYear] = useState(now.getFullYear());
+  const { month, year, prev, next } = useMonthNavigation();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -32,6 +33,8 @@ export default function TransactionList() {
       setIsLoading(true);
       const data = await getTransactions({ month, year });
       setTransactions(data);
+    } catch {
+      toast.error("Não foi possível carregar. Tente novamente.");
     } finally {
       setIsLoading(false);
     }
@@ -41,24 +44,6 @@ export default function TransactionList() {
   useEffect(() => {
     loadTransactions();
   }, [loadTransactions]);
-
-  function handlePrev() {
-    if (month === 1) {
-      setMonth(12);
-      setYear((y) => y - 1);
-    } else {
-      setMonth((m) => m - 1);
-    }
-  }
-
-  function handleNext() {
-    if (month === 12) {
-      setMonth(1);
-      setYear((y) => y + 1);
-    } else {
-      setMonth((m) => m + 1);
-    }
-  }
 
   function handleNewTransaction() {
     setSelectedTransaction(undefined);
@@ -72,12 +57,7 @@ export default function TransactionList() {
 
   return (
     <div className="p-4 pb-24">
-      <MonthPicker
-        month={month}
-        year={year}
-        onPrev={handlePrev}
-        onNext={handleNext}
-      />
+      <MonthPicker month={month} year={year} onPrev={prev} onNext={next} />
 
       {isLoading ? (
         <p className="py-8 text-center text-muted-foreground">Carregando...</p>
@@ -88,27 +68,31 @@ export default function TransactionList() {
       ) : (
         <ul className="mt-4 space-y-2">
           {transactions.map((transaction) => (
-            <li
-              key={transaction.id}
-              onClick={() => handleEditTransaction(transaction)}
-              className="flex cursor-pointer items-center justify-between rounded-lg border p-3"
-            >
-              <div>
-                <p className="text-sm font-medium">{transaction.description}</p>
-                <p className="text-xs text-muted-foreground">
-                  {transaction.category?.name ?? "Sem categoria"}
-                </p>
-              </div>
-              <p
-                className={
-                  transaction.type === "INCOME"
-                    ? "font-medium text-green-600"
-                    : "font-medium text-red-500"
-                }
+            <li key={transaction.id}>
+              <button
+                type="button"
+                onClick={() => handleEditTransaction(transaction)}
+                className="flex w-full cursor-pointer items-center justify-between rounded-lg border p-3 text-left"
               >
-                {transaction.type === "INCOME" ? "+" : "-"} R${" "}
-                {Number(transaction.amount).toFixed(2)}
-              </p>
+                <div>
+                  <p className="text-sm font-medium">
+                    {transaction.description}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {transaction.category?.name ?? "Sem categoria"}
+                  </p>
+                </div>
+                <p
+                  className={
+                    transaction.type === "INCOME"
+                      ? "font-medium text-green-600"
+                      : "font-medium text-red-500"
+                  }
+                >
+                  {transaction.type === "INCOME" ? "+" : "-"}{" "}
+                  {formatCurrency(Number(transaction.amount))}
+                </p>
+              </button>
             </li>
           ))}
         </ul>
@@ -117,6 +101,7 @@ export default function TransactionList() {
       {/* FAB — fixed acima da bottom nav (h-16 = 64px) */}
       <button
         onClick={handleNewTransaction}
+        aria-label="Nova transação"
         className="fixed bottom-20 right-4 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg"
       >
         <Plus size={24} />

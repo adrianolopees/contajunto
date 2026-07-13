@@ -13,12 +13,16 @@ export default function MonthPicker({
 }: MonthPickerProps) {
   return (
     <div className=" flex items-center justify-between  py-2">
-      <button onClick={onPrev}>{"<"}</button>
+      <button onClick={onPrev} aria-label="Mês anterior">
+        {"<"}
+      </button>
       <span>
         {new Date(year, month - 1).toLocaleString("pt-BR", { month: "long" })}{" "}
         {year}
       </span>
-      <button onClick={onNext}>{">"}</button>
+      <button onClick={onNext} aria-label="Próximo mês">
+        {">"}
+      </button>
     </div>
   );
 }

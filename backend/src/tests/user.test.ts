@@ -80,7 +80,7 @@ describe("PATCH /users/me", () => {
       .send({ name: "Nome Atualizado" });
 
     expect(res.status).toBe(200);
-    expect(res.body.userUpdated.name).toBe("Nome Atualizado");
+    expect(res.body.user.name).toBe("Nome Atualizado");
   });
 
   it("should not expose passwordHash in response", async () => {
@@ -92,6 +92,6 @@ describe("PATCH /users/me", () => {
       .send({ name: "Nome Atualizado" });
 
     expect(res.status).toBe(200);
-    expect(res.body.userUpdated).not.toHaveProperty("passwordHash");
+    expect(res.body.user).not.toHaveProperty("passwordHash");
   });
 });

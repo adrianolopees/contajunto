@@ -18,6 +18,10 @@ export default function errorMiddleware(
       res.status(404).json({ message: "Resource not found" });
       return;
     }
+    if (err.code === "P2002") {
+      res.status(409).json({ message: "Resource already exists" });
+      return;
+    }
   }
 
   console.error(err);

@@ -5,7 +5,13 @@ import {
   updateTransaction,
   type Transaction,
 } from "@/services/transactions";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, Controller } from "react-hook-form";
 import z from "zod";
@@ -19,9 +25,12 @@ import {
 import { Label } from "../ui/label";
 import { Input } from "../ui/input";
 import toast from "react-hot-toast";
-import { useEffect } from "react";
+import axios from "axios";
+import { useEffect, useState } from "react";
 import { Button } from "../ui/button";
 import { Trash2 } from "lucide-react";
+
+const NO_CATEGORY = "none";
 
 const TransactionFormShchema = z.object({
   type: z.enum(["EXPENSE", "INCOME"]),
@@ -33,7 +42,7 @@ const TransactionFormShchema = z.object({
       (v) => parseFloat(v.replace(",", ".")) > 0,
       "Deve ser maior que zero",
     ),
-  description: z.string().min(4, "Mínimo 4 caracteres"),
+  description: z.string().min(1, "Informe uma descrição"),
   categoryId: z.string().optional(),
 });
 
@@ -52,13 +61,15 @@ export default function TransactionForm({
   categories,
   onSuccess,
 }: TransactionFormProps) {
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+
   const form = useForm<z.infer<typeof TransactionFormShchema>>({
     resolver: zodResolver(TransactionFormShchema),
     defaultValues: {
       type: transaction?.type ?? "EXPENSE",
       amount: transaction?.amount ?? "",
       description: transaction?.description ?? "",
-      categoryId: transaction?.categoryId ?? "",
+      categoryId: transaction?.categoryId ?? NO_CATEGORY,
     },
   });
   useEffect(() => {
@@ -66,7 +77,7 @@ export default function TransactionForm({
       type: transaction?.type ?? "EXPENSE",
       amount: transaction?.amount ?? "",
       description: transaction?.description ?? "",
-      categoryId: transaction?.categoryId ?? "",
+      categoryId: transaction?.categoryId ?? NO_CATEGORY,
     });
   }, [transaction, form]);
 
@@ -75,7 +86,12 @@ export default function TransactionForm({
       const payload = {
         ...data,
         amount: parseFloat(data.amount.replace(",", ".")),
-        categoryId: data.categoryId || undefined,
+        categoryId:
+          data.categoryId === NO_CATEGORY
+            ? transaction
+              ? null
+              : undefined
+            : data.categoryId,
       };
       if (!transaction) {
         await createTransaction(payload);
@@ -86,8 +102,12 @@ export default function TransactionForm({
       }
       onOpenChange(false);
       onSuccess();
-    } catch {
-      toast.error("Mensagem de erro");
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        toast.error("Categoria inválida. Selecione outra.");
+      } else {
+        toast.error("Erro ao salvar transação. Tente novamente.");
+      }
     }
   }
 
@@ -96,10 +116,11 @@ export default function TransactionForm({
       if (!transaction) return;
       await deleteTransaction(transaction.id);
       toast.success("Transação deletada com sucesso!");
+      setConfirmDeleteOpen(false);
       onOpenChange(false);
       onSuccess();
     } catch {
-      toast.error("Mensagem de erro");
+      toast.error("Erro ao deletar transação. Tente novamente.");
     }
   }
 
@@ -161,10 +182,12 @@ export default function TransactionForm({
               <Select value={field.value} onValueChange={field.onChange}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecionar categoria">
-                    {categories.find((c) => c.id === field.value)?.name}
+                    {categories.find((c) => c.id === field.value)?.name ??
+                      "Sem categoria"}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value={NO_CATEGORY}>Sem categoria</SelectItem>
                   {categories.map((category) => (
                     <SelectItem key={category.id} value={category.id}>
                       {category.name}
@@ -179,7 +202,7 @@ export default function TransactionForm({
               <Button
                 variant="destructive"
                 type="button"
-                onClick={handleDelete}
+                onClick={() => setConfirmDeleteOpen(true)}
               >
                 <Trash2 size={16} /> Excluir
               </Button>
@@ -188,6 +211,29 @@ export default function TransactionForm({
           </div>
         </form>
       </DialogContent>
+
+      <Dialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir transação?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Essa ação não pode ser desfeita.
+          </p>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConfirmDeleteOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button type="button" variant="destructive" onClick={handleDelete}>
+              Excluir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

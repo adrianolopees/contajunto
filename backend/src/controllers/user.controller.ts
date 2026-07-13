@@ -38,5 +38,5 @@ export async function updateMe(req: Request, res: Response) {
     omit: { passwordHash: true },
   });
 
-  res.status(200).json({ userUpdated });
+  res.status(200).json({ user: userUpdated });
 }

@@ -11,6 +11,8 @@ import {
 } from "@/services/groups";
 import type { Transaction, TransactionsSummary } from "@/services/transactions";
 import MonthPicker from "@/components/MonthPicker";
+import { useMonthNavigation } from "@/hooks/useMonthNavigation";
+import { formatCurrency } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,33 +23,28 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(value);
-}
-
 export function GroupDashboard() {
   const { user, updateUser } = useAuth();
   const [group, setGroup] = useState<Omit<Group, "inviteCode"> | null>(null);
   const [inviteCode, setInviteCode] = useState("");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [summary, setSummary] = useState<TransactionsSummary | null>(null);
-  const now = new Date();
-  const [month, setMonth] = useState(now.getMonth() + 1);
-  const [year, setYear] = useState(now.getFullYear());
+  const { month, year, prev, next } = useMonthNavigation();
   const [isLoading, setIsLoading] = useState(true);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
     async function fetchGroupInfo() {
-      const [groupData, code] = await Promise.all([
-        getGroup(),
-        getInviteCode(),
-      ]);
-      setGroup(groupData);
-      setInviteCode(code);
+      try {
+        const [groupData, code] = await Promise.all([
+          getGroup(),
+          getInviteCode(),
+        ]);
+        setGroup(groupData);
+        setInviteCode(code);
+      } catch {
+        toast.error("Não foi possível carregar o grupo. Tente novamente.");
+      }
     }
     fetchGroupInfo();
   }, []);
@@ -61,6 +58,8 @@ export function GroupDashboard() {
       ]);
       setTransactions(transactionsData);
       setSummary(summaryData);
+    } catch {
+      toast.error("Não foi possível carregar. Tente novamente.");
     } finally {
       setIsLoading(false);
     }
@@ -69,24 +68,6 @@ export function GroupDashboard() {
   useEffect(() => {
     loadTransactions();
   }, [loadTransactions]);
-
-  function handlePrevMonth() {
-    if (month === 1) {
-      setMonth(12);
-      setYear((y) => y - 1);
-    } else {
-      setMonth((m) => m - 1);
-    }
-  }
-
-  function handleNextMonth() {
-    if (month === 12) {
-      setMonth(1);
-      setYear((y) => y + 1);
-    } else {
-      setMonth((m) => m + 1);
-    }
-  }
 
   async function handleLeaveGroup() {
     try {
@@ -154,12 +135,7 @@ export function GroupDashboard() {
         </CardContent>
       </Card>
 
-      <MonthPicker
-        month={month}
-        year={year}
-        onPrev={handlePrevMonth}
-        onNext={handleNextMonth}
-      />
+      <MonthPicker month={month} year={year} onPrev={prev} onNext={next} />
 
       <div className="grid grid-cols-3 gap-4">
         <Card>
@@ -206,8 +182,8 @@ export function GroupDashboard() {
                         : "font-medium text-red-500"
                     }
                   >
-                    {transaction.type === "INCOME" ? "+" : "-"} R${" "}
-                    {Number(transaction.amount).toFixed(2)}
+                    {transaction.type === "INCOME" ? "+" : "-"}{" "}
+                    {formatCurrency(Number(transaction.amount))}
                   </p>
                 </div>
               </li>

@@ -4,11 +4,18 @@ import {
   updateCategory,
   type Category,
 } from "@/services/categories";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import toast from "react-hot-toast";
+import axios from "axios";
 import z from "zod";
 import { Label } from "../ui/label";
 import { Input } from "../ui/input";
@@ -59,6 +66,8 @@ export default function CategoryForm({
     });
   }, [category, form]);
 
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+
   async function onSubmit(data: z.infer<typeof CategoryFormSchema>) {
     try {
       if (!category) {
@@ -70,8 +79,12 @@ export default function CategoryForm({
       }
       onOpenChange(false);
       onSuccess();
-    } catch {
-      toast.error("Mensagem de erro");
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 409) {
+        toast.error("Já existe uma categoria com esse nome.");
+      } else {
+        toast.error("Erro ao salvar categoria. Tente novamente.");
+      }
     }
   }
 
@@ -80,10 +93,11 @@ export default function CategoryForm({
       if (!category) return;
       await deleteCategory(category.id);
       toast.success("Categoria deletada com sucesso!");
+      setConfirmDeleteOpen(false);
       onOpenChange(false);
       onSuccess();
     } catch {
-      toast.error("Mensagem de erro");
+      toast.error("Erro ao deletar categoria. Tente novamente.");
     }
   }
 
@@ -161,7 +175,7 @@ export default function CategoryForm({
               <Button
                 variant="destructive"
                 type="button"
-                onClick={handleDelete}
+                onClick={() => setConfirmDeleteOpen(true)}
               >
                 <Trash2 size={16} /> Excluir
               </Button>
@@ -170,6 +184,30 @@ export default function CategoryForm({
           </div>
         </form>
       </DialogContent>
+
+      <Dialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir categoria?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            As transações que usam essa categoria ficam sem categoria. Essa
+            ação não pode ser desfeita.
+          </p>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConfirmDeleteOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button type="button" variant="destructive" onClick={handleDelete}>
+              Excluir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

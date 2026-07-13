@@ -110,12 +110,12 @@ describe("POST /categories", () => {
       .send({ name: "Viagem", color: "green", icon: "plane" });
 
     expect(res.status).toBe(201);
-    expect(res.body.newCategory).toMatchObject({
+    expect(res.body.category).toMatchObject({
       name: "Viagem",
       color: "green",
       icon: "plane",
     });
-    expect(res.body.newCategory.userId).toBeUndefined();
+    expect(res.body.category.userId).toBeUndefined();
   });
 
   it("should return 409 when category already exists for the user", async () => {
@@ -208,17 +208,17 @@ describe("PATCH /categories", () => {
       .send({ name: "Viagem", color: "green", icon: "plane" });
 
     const res = await request(app)
-      .patch(`/categories/${created.body.newCategory.id}`)
+      .patch(`/categories/${created.body.category.id}`)
       .set("Authorization", `Bearer ${accessToken}`)
       .send({ name: "Viagem Atualizada", color: "blue", icon: "car" });
 
     expect(res.status).toBe(200);
-    expect(res.body.updatedCategory).toMatchObject({
+    expect(res.body.category).toMatchObject({
       name: "Viagem Atualizada",
       color: "blue",
       icon: "car",
     });
-    expect(res.body.updatedCategory.userId).toBeUndefined();
+    expect(res.body.category.userId).toBeUndefined();
   });
 
   it("should return 200 with partial update", async () => {
@@ -230,12 +230,12 @@ describe("PATCH /categories", () => {
       .send({ name: "Viagem", color: "green", icon: "plane" });
 
     const res = await request(app)
-      .patch(`/categories/${created.body.newCategory.id}`)
+      .patch(`/categories/${created.body.category.id}`)
       .set("Authorization", `Bearer ${accessToken}`)
       .send({ color: "red" });
 
     expect(res.status).toBe(200);
-    expect(res.body.updatedCategory.color).toBe("red");
+    expect(res.body.category.color).toBe("red");
   });
 
   it("should return 404 when category belongs to another user", async () => {
@@ -252,7 +252,7 @@ describe("PATCH /categories", () => {
       .send({ name: "Viagem", color: "green", icon: "plane" });
 
     const res = await request(app)
-      .patch(`/categories/${created.body.newCategory.id}`)
+      .patch(`/categories/${created.body.category.id}`)
       .set("Authorization", `Bearer ${token2}`)
       .send({ name: "Tentativa" });
 
@@ -302,7 +302,7 @@ describe("DELETE /categories/:id", () => {
       .send({ name: "teste2", color: "teste2", icon: "teste2" });
 
     const res2 = await request(app)
-      .delete(`/categories/${res1.body.newCategory.id}`)
+      .delete(`/categories/${res1.body.category.id}`)
       .set("Authorization", `Bearer ${accessToken2}`);
 
     expect(res2.status).toBe(404);
@@ -317,7 +317,7 @@ describe("DELETE /categories/:id", () => {
       .send({ name: "teste2", color: "teste2", icon: "teste2" });
 
     const res2 = await request(app)
-      .delete(`/categories/${res1.body.newCategory.id}`)
+      .delete(`/categories/${res1.body.category.id}`)
       .set("Authorization", `Bearer ${accessToken}`);
 
     expect(res2.status).toBe(200);

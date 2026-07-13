@@ -1,17 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import toast from "react-hot-toast";
 import type { Category } from "@/services/categories";
 import { getCategories } from "@/services/categories";
 import type { CategorySpending } from "@/services/transactions";
 import { getCategorySpending } from "@/services/transactions";
 import MonthPicker from "@/components/MonthPicker";
+import { useMonthNavigation } from "@/hooks/useMonthNavigation";
+import { formatCurrency } from "@/lib/format";
 import * as Icons from "lucide-react";
 import { Plus } from "lucide-react";
 import CategoryForm from "@/components/categories/CategoryForm";
 
 export default function CategoryList() {
-  const now = new Date();
-  const [month, setMonth] = useState(now.getMonth() + 1);
-  const [year, setYear] = useState(now.getFullYear());
+  const { month, year, prev, next } = useMonthNavigation();
   const [categories, setCategories] = useState<Category[]>([]);
   const [categorySpending, setCategorySpending] = useState<CategorySpending[]>(
     [],
@@ -40,6 +41,8 @@ export default function CategoryList() {
       ]);
       setCategories(categories);
       setCategorySpending(categorySpending);
+    } catch {
+      toast.error("Não foi possível carregar. Tente novamente.");
     } finally {
       setIsLoading(false);
     }
@@ -48,24 +51,6 @@ export default function CategoryList() {
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  function handlePrev() {
-    if (month === 1) {
-      setMonth(12);
-      setYear((y) => y - 1);
-    } else {
-      setMonth((m) => m - 1);
-    }
-  }
-
-  function handleNext() {
-    if (month === 12) {
-      setMonth(1);
-      setYear((y) => y + 1);
-    } else {
-      setMonth((m) => m + 1);
-    }
-  }
 
   function handleNewCategory() {
     setSelectedCategory(undefined);
@@ -79,12 +64,7 @@ export default function CategoryList() {
 
   return (
     <div className="p-4 pb-24">
-      <MonthPicker
-        month={month}
-        year={year}
-        onPrev={handlePrev}
-        onNext={handleNext}
-      />
+      <MonthPicker month={month} year={year} onPrev={prev} onNext={next} />
 
       {isLoading ? (
         <p className="py-8 text-center text-muted-foreground">Carregando...</p>
@@ -97,16 +77,18 @@ export default function CategoryList() {
           {enrichedCategories.map((category) => {
             const Icon = Icons[category.icon as keyof typeof Icons] as Icons.LucideIcon;
             return (
-              <li
-                key={category.id}
-                onClick={() => handleEditCategory(category)}
-                className="cursor-pointer rounded-lg border p-3"
-              >
-                {Icon && <Icon size={20} color={category.color} />}
-                <p className="font-medium">{category.name}</p>
-                <p className="text-sm text-muted-foreground">
-                  R$ {category.total.toFixed(2)}
-                </p>
+              <li key={category.id}>
+                <button
+                  type="button"
+                  onClick={() => handleEditCategory(category)}
+                  className="w-full cursor-pointer rounded-lg border p-3 text-left"
+                >
+                  {Icon && <Icon size={20} color={category.color} />}
+                  <p className="font-medium">{category.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {formatCurrency(category.total)}
+                  </p>
+                </button>
               </li>
             );
           })}
@@ -114,6 +96,7 @@ export default function CategoryList() {
       )}
       <button
         onClick={handleNewCategory}
+        aria-label="Nova categoria"
         className="fixed bottom-20 right-4 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg"
       >
         <Plus size={24} />

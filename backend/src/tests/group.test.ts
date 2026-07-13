@@ -307,7 +307,7 @@ describe("GET /groups/transactions", () => {
       .get("/groups/transactions")
       .set("Authorization", `Bearer ${accessToken}`);
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(404);
   });
 
   it("should return 200 and empty array when group has no transactions", async () => {
@@ -418,14 +418,14 @@ describe("GET /groups/transactions/summary", () => {
     expect(res.status).toBe(401);
   });
 
-  it("should return 400 when user has no group", async () => {
+  it("should return 404 when user has no group", async () => {
     const accessToken = await createAndAuthenticateUser();
 
     const res = await request(app)
       .get("/groups/transactions/summary")
       .set("Authorization", `Bearer ${accessToken}`);
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(404);
   });
 
   it("should return zeroed values when group has no transactions", async () => {

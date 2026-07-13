@@ -20,6 +20,7 @@ model User {
   transactions  Transaction[]
   refreshTokens RefreshToken[]
 
+  @@index([familyGroupId])
 }
 
 model RefreshToken {
@@ -52,6 +53,9 @@ model Transaction {
   createdAt     DateTime    @default(now())
   userId        String
   user          User        @relation(fields: [userId], references: [id])
+
+  @@index([userId, year, month])
+  @@index([categoryId])
 }
 
 model Category {

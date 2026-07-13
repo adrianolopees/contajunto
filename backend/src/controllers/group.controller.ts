@@ -2,6 +2,9 @@ import { Response, Request } from "express";
 import { Prisma } from "../generated/prisma/index.js";
 import z from "zod";
 import prisma from "../lib/prisma.js";
+import { getBusinessMonthYear } from "../lib/date.js";
+
+const MAX_GROUP_MEMBERS = 2;
 
 const groupSchema = z.object({
   name: z
@@ -71,10 +74,18 @@ export async function joinGroup(req: Request, res: Response) {
     const groupId = await prisma.$transaction(async (tx) => {
       const group = await tx.familyGroup.findUnique({
         where: { inviteCode },
-        include: { _count: { select: { users: true } } },
       });
       if (!group) throw new Error("INVALID_INVITE");
-      if (group._count.users >= 2) throw new Error("GROUP_FULL");
+
+      // trava a linha do grupo: um segundo join concorrente pro mesmo grupo
+      // espera esta transação commitar antes de contar os membros, fechando
+      // a race condition de dois joins simultâneos passarem pela checagem juntos
+      await tx.$queryRaw`SELECT id FROM "FamilyGroup" WHERE id = ${group.id} FOR UPDATE`;
+
+      const memberCount = await tx.user.count({
+        where: { familyGroupId: group.id },
+      });
+      if (memberCount >= MAX_GROUP_MEMBERS) throw new Error("GROUP_FULL");
 
       const updatedGroup = await tx.user.update({
         where: {
@@ -181,29 +192,35 @@ export async function leaveGroup(req: Request, res: Response) {
   res.status(200).json({ group: { familyGroupId: null } });
 }
 
-export async function getGroupTransactions(req: Request, res: Response) {
-  const { month: rawMonth, year: rawYear } = querySchema.parse(req.query);
-  const userId = req.user.id;
-
-  const now = new Date();
-  const month = rawMonth || now.getMonth() + 1;
-  const year = rawYear || now.getFullYear();
-
+async function getGroupMemberIds(userId: string): Promise<string[] | null> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { familyGroupId: true },
   });
 
-  if (!user?.familyGroupId) {
-    res.status(400).json({ message: "User does not belong to a group" });
-    return;
-  }
+  if (!user?.familyGroupId) return null;
+
   const members = await prisma.user.findMany({
     where: { familyGroupId: user.familyGroupId },
     select: { id: true },
   });
 
-  const memberIds = members.map((user) => user.id);
+  return members.map((member) => member.id);
+}
+
+export async function getGroupTransactions(req: Request, res: Response) {
+  const { month: rawMonth, year: rawYear } = querySchema.parse(req.query);
+
+  const { month: currentMonth, year: currentYear } = getBusinessMonthYear();
+  const month = rawMonth || currentMonth;
+  const year = rawYear || currentYear;
+
+  const memberIds = await getGroupMemberIds(req.user.id);
+
+  if (!memberIds) {
+    res.status(404).json({ message: "User is not part of any group" });
+    return;
+  }
 
   const transactions = await prisma.transaction.findMany({
     where: {
@@ -222,27 +239,17 @@ export async function getGroupTransactions(req: Request, res: Response) {
 
 export async function getGroupTransactionsSummary(req: Request, res: Response) {
   const { month: rawMonth, year: rawYear } = querySchema.parse(req.query);
-  const userId = req.user.id;
 
-  const now = new Date();
-  const month = rawMonth || now.getMonth() + 1;
-  const year = rawYear || now.getFullYear();
+  const { month: currentMonth, year: currentYear } = getBusinessMonthYear();
+  const month = rawMonth || currentMonth;
+  const year = rawYear || currentYear;
 
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { familyGroupId: true },
-  });
+  const memberIds = await getGroupMemberIds(req.user.id);
 
-  if (!user?.familyGroupId) {
-    res.status(400).json({ message: "User does not belong to a group" });
+  if (!memberIds) {
+    res.status(404).json({ message: "User is not part of any group" });
     return;
   }
-  const members = await prisma.user.findMany({
-    where: { familyGroupId: user.familyGroupId },
-    select: { id: true },
-  });
-
-  const memberIds = members.map((user) => user.id);
 
   const [expenseSummary, incomeSummary] = await Promise.all([
     prisma.transaction.aggregate({
@@ -265,9 +272,14 @@ export async function getGroupTransactionsSummary(req: Request, res: Response) {
       _sum: { amount: true },
     }),
   ]);
-  const income = Number(incomeSummary._sum.amount ?? 0);
-  const expense = Number(expenseSummary._sum.amount ?? 0);
-  const balance = income - expense;
+  const incomeCents = Math.round(Number(incomeSummary._sum.amount ?? 0) * 100);
+  const expenseCents = Math.round(
+    Number(expenseSummary._sum.amount ?? 0) * 100,
+  );
 
-  res.status(200).json({ income, expense, balance });
+  res.status(200).json({
+    income: incomeCents / 100,
+    expense: expenseCents / 100,
+    balance: (incomeCents - expenseCents) / 100,
+  });
 }

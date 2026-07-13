@@ -33,7 +33,7 @@ export async function createTransaction(data: {
   amount: number;
   type: "INCOME" | "EXPENSE";
   description: string;
-  categoryId?: string;
+  categoryId?: string | null;
 }): Promise<Transaction> {
   const res = await api.post("/transactions", data);
   return res.data.transaction;
@@ -58,11 +58,11 @@ export async function updateTransaction(
     amount?: number;
     type?: "INCOME" | "EXPENSE";
     description?: string;
-    categoryId?: string;
+    categoryId?: string | null;
   },
 ): Promise<Transaction> {
   const res = await api.patch(`/transactions/${id}`, data);
-  return res.data.updatedTransaction;
+  return res.data.transaction;
 }
 
 export async function deleteTransaction(id: string) {

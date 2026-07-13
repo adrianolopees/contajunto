@@ -8,5 +8,5 @@ export async function getMe(): Promise<User> {
 
 export async function updateMe(name: string): Promise<User> {
   const res = await api.patch("/users/me", { name });
-  return res.data.userUpdated;
+  return res.data.user;
 }

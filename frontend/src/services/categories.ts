@@ -11,7 +11,7 @@ export async function createCategory(
   data: Omit<Category, "id">,
 ): Promise<Category> {
   const res = await api.post("/categories", data);
-  return res.data.newCategory;
+  return res.data.category;
 }
 
 export async function getCategories(): Promise<Category[]> {
@@ -24,7 +24,7 @@ export async function updateCategory(
   data: Partial<Omit<Category, "id">>,
 ): Promise<Category> {
   const res = await api.patch(`/categories/${id}`, data);
-  return res.data.updatedCategory;
+  return res.data.category;
 }
 
 export async function getDefaultCategories(): Promise<Category[]> {

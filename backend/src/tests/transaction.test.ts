@@ -221,7 +221,7 @@ describe("PATCH /transactions/:id", () => {
     expect(res.status).toBe(404);
   });
 
-  it("should return 403 when categoryId does not belong to the user", async () => {
+  it("should return 404 when categoryId does not belong to the user", async () => {
     const accessToken1 = await createAndAuthenticateUser();
     const accessToken2 = await createAndAuthenticateUser({
       name: "Outro",
@@ -242,9 +242,9 @@ describe("PATCH /transactions/:id", () => {
     const res = await request(app)
       .patch(`/transactions/${transactionRes.body.transaction.id}`)
       .set("Authorization", `Bearer ${accessToken1}`)
-      .send({ categoryId: categoryRes.body.newCategory.id });
+      .send({ categoryId: categoryRes.body.category.id });
 
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(404);
   });
 
   it("should return 200 and update transaction fields successfully", async () => {
@@ -262,7 +262,7 @@ describe("PATCH /transactions/:id", () => {
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
-      updatedTransaction: {
+      transaction: {
         id: createRes.body.transaction.id,
         description: "Mercado Novo",
         amount: "99.9",
@@ -284,8 +284,8 @@ describe("PATCH /transactions/:id", () => {
       .send({ type: "INCOME" });
 
     expect(res.status).toBe(200);
-    expect(res.body.updatedTransaction.type).toBe("INCOME");
-    expect(res.body.updatedTransaction.description).toBe(
+    expect(res.body.transaction.type).toBe("INCOME");
+    expect(res.body.transaction.description).toBe(
       validTransaction.description,
     );
   });
@@ -403,5 +403,171 @@ describe("DELETE /transactions/:id", () => {
       .set("Authorization", `Bearer ${accessToken}`);
 
     expect(res2.status).toBe(200);
+  });
+});
+
+describe("GET /transactions/summary", () => {
+  it("should return 401 when no token is provided", async () => {
+    const res = await request(app).get("/transactions/summary");
+
+    expect(res.status).toBe(401);
+  });
+
+  it("should return zeroed values when user has no transactions", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .get("/transactions/summary")
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ income: 0, expense: 0, balance: 0 });
+  });
+
+  it("should aggregate income and expense", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    await request(app)
+      .post("/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ amount: 100, type: "INCOME", description: "Salário" });
+
+    await request(app)
+      .post("/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ amount: 40, type: "EXPENSE", description: "Mercado" });
+
+    const res = await request(app)
+      .get("/transactions/summary")
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ income: 100, expense: 40, balance: 60 });
+  });
+
+  it("should filter summary by month and year", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    await request(app)
+      .post("/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ amount: 200, type: "INCOME", description: "Salário" });
+
+    const now = new Date();
+    const res = await request(app)
+      .get(
+        `/transactions/summary?month=${now.getMonth() + 1}&year=${now.getFullYear()}`,
+      )
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ income: 200, expense: 0, balance: 200 });
+  });
+
+  it("should return zeroed values when filter does not match", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    await request(app)
+      .post("/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ amount: 200, type: "INCOME", description: "Salário" });
+
+    const res = await request(app)
+      .get("/transactions/summary?month=1&year=2000")
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ income: 0, expense: 0, balance: 0 });
+  });
+
+  it("should not include transactions from other users", async () => {
+    const accessToken1 = await createAndAuthenticateUser();
+    const accessToken2 = await createAndAuthenticateUser(user2);
+
+    await request(app)
+      .post("/transactions")
+      .set("Authorization", `Bearer ${accessToken2}`)
+      .send({ amount: 500, type: "INCOME", description: "Renda outro user" });
+
+    const res = await request(app)
+      .get("/transactions/summary")
+      .set("Authorization", `Bearer ${accessToken1}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ income: 0, expense: 0, balance: 0 });
+  });
+});
+
+describe("GET /transactions/summary/by-category", () => {
+  it("should return 401 when no token is provided", async () => {
+    const res = await request(app).get("/transactions/summary/by-category");
+
+    expect(res.status).toBe(401);
+  });
+
+  it("should return empty array when user has no transactions", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .get("/transactions/summary/by-category")
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.categorySpending).toEqual([]);
+  });
+
+  it("should aggregate expense total for a category", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const categoryRes = await request(app)
+      .post("/categories")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ name: "Mercado", color: "green", icon: "cart" });
+
+    await request(app)
+      .post("/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({
+        amount: 40,
+        type: "EXPENSE",
+        description: "Mercado semana",
+        categoryId: categoryRes.body.category.id,
+      });
+
+    const res = await request(app)
+      .get("/transactions/summary/by-category")
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.categorySpending).toContainEqual({
+      categoryId: categoryRes.body.category.id,
+      total: 40,
+    });
+  });
+
+  it("should not include income transactions in a category's spending total", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const categoryRes = await request(app)
+      .post("/categories")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ name: "Salário", color: "blue", icon: "wallet" });
+
+    await request(app)
+      .post("/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({
+        amount: 5000,
+        type: "INCOME",
+        description: "Salário do mês",
+        categoryId: categoryRes.body.category.id,
+      });
+
+    const res = await request(app)
+      .get("/transactions/summary/by-category")
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.categorySpending).toEqual([]);
   });
 });

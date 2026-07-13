@@ -111,6 +111,10 @@ export async function login(req: Request, res: Response) {
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 7);
 
+  await prisma.refreshToken.deleteMany({
+    where: { userId: user.id, expiresAt: { lt: new Date() } },
+  });
+
   await prisma.refreshToken.create({
     data: {
       token: refreshToken,

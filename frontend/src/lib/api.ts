@@ -12,7 +12,7 @@ export function setUnauthenticatedCallback(fn: () => void) {
 }
 
 export const api = axios.create({
-  baseURL: "http://localhost:3333",
+  baseURL: import.meta.env.VITE_API_URL ?? "http://localhost:3333",
   withCredentials: true,
 });
 
@@ -22,6 +22,23 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+let refreshPromise: Promise<string> | null = null;
+
+async function refreshAccessToken(): Promise<string> {
+  if (!refreshPromise) {
+    refreshPromise = api
+      .post("/auth/refresh")
+      .then((res) => {
+        setAuthToken(res.data.accessToken);
+        return res.data.accessToken as string;
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+  return refreshPromise;
+}
 
 api.interceptors.response.use(
   (response) => response,
@@ -36,8 +53,7 @@ api.interceptors.response.use(
       original._retry = true;
 
       try {
-        const res = await api.post("/auth/refresh");
-        setAuthToken(res.data.accessToken);
+        await refreshAccessToken();
         return api(original);
       } catch {
         setAuthToken(null);

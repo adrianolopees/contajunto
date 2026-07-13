@@ -23,12 +23,12 @@ export async function createCategory(req: Request, res: Response) {
     return;
   }
 
-  const newCategory = await prisma.category.create({
+  const category = await prisma.category.create({
     data: { userId, name, color, icon },
     omit: { userId: true },
   });
 
-  res.status(201).json({ newCategory });
+  res.status(201).json({ category });
 }
 
 export async function getCategories(req: Request, res: Response) {
@@ -59,7 +59,7 @@ export async function updateCategory(req: Request, res: Response) {
     omit: { userId: true },
   });
 
-  res.status(200).json({ updatedCategory });
+  res.status(200).json({ category: updatedCategory });
 }
 
 export async function getDefaultCategories(req: Request, res: Response) {

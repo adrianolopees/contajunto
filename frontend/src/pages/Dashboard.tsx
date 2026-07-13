@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import {
   type TransactionsSummary,
   type Transaction,
@@ -7,23 +8,27 @@ import {
 } from "@/services/transactions";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import MonthPicker from "@/components/MonthPicker";
+import { useMonthNavigation } from "@/hooks/useMonthNavigation";
+import { formatCurrency } from "@/lib/format";
 
 export default function Dashboard() {
+  const { month, year, prev, next } = useMonthNavigation();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [summary, setSummary] = useState<TransactionsSummary | null>(null);
-  const [month, setMonth] = useState(new Date().getMonth() + 1);
-  const [year, setYear] = useState(new Date().getFullYear());
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
       try {
+        setIsLoading(true);
         const [transactions, summary] = await Promise.all([
           getTransactions({ month, year }),
           getTransactionsSummary({ month, year }),
         ]);
         setTransactions(transactions);
         setSummary(summary);
+      } catch {
+        toast.error("Não foi possível carregar. Tente novamente.");
       } finally {
         setIsLoading(false);
       }
@@ -31,60 +36,23 @@ export default function Dashboard() {
     fetchData();
   }, [month, year]);
 
-  function handlePrevMonth() {
-    if (month === 1) {
-      setMonth(12);
-      setYear(year - 1);
-    } else {
-      setMonth(month - 1);
-    }
-  }
-  function handleNextMonth() {
-    if (month === 12) {
-      setMonth(1);
-      setYear(year + 1);
-    } else {
-      setMonth(month + 1);
-    }
-  }
-
   return (
     <div className="px-4 py-4 space-y-4">
-      <MonthPicker
-        month={month}
-        year={year}
-        onPrev={handlePrevMonth}
-        onNext={handleNextMonth}
-      />
+      <MonthPicker month={month} year={year} onPrev={prev} onNext={next} />
 
       <div className="grid grid-cols-3 gap-4 ">
         <Card>
           <CardTitle>Receitas </CardTitle>
-          <CardContent>
-            {new Intl.NumberFormat("pt-BR", {
-              style: "currency",
-              currency: "BRL",
-            }).format(summary?.income ?? 0)}
-          </CardContent>
+          <CardContent>{formatCurrency(summary?.income ?? 0)}</CardContent>
         </Card>
         <Card>
           <CardTitle> Despesas</CardTitle>
-          <CardContent>
-            {new Intl.NumberFormat("pt-BR", {
-              style: "currency",
-              currency: "BRL",
-            }).format(summary?.expense ?? 0)}
-          </CardContent>
+          <CardContent>{formatCurrency(summary?.expense ?? 0)}</CardContent>
         </Card>
         <Card>
           <CardTitle> Saldo</CardTitle>
 
-          <CardContent>
-            {new Intl.NumberFormat("pt-BR", {
-              style: "currency",
-              currency: "BRL",
-            }).format(summary?.balance ?? 0)}
-          </CardContent>
+          <CardContent>{formatCurrency(summary?.balance ?? 0)}</CardContent>
         </Card>
       </div>
       <div>

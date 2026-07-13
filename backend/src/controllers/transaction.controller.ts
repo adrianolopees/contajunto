@@ -1,15 +1,18 @@
 import { Response, Request } from "express";
 import z from "zod";
 import prisma from "../lib/prisma.js";
+import { getBusinessMonthYear } from "../lib/date.js";
 
 const transactionSchema = z.object({
   amount: z.number().positive().multipleOf(0.01),
   type: z.enum(["INCOME", "EXPENSE"]),
-  description: z.string().min(4).max(255),
+  description: z.string().min(1).max(255),
   categoryId: z.uuid().optional(),
 });
 
-const updateTransactionSchema = transactionSchema.partial();
+const updateTransactionSchema = transactionSchema.partial().extend({
+  categoryId: z.uuid().nullable().optional(),
+});
 
 const querySchema = z.object({
   month: z.coerce.number().int().min(1).max(12).optional(),
@@ -28,12 +31,13 @@ export async function createTransaction(req: Request, res: Response) {
       where: { id: categoryId, userId },
     });
     if (!category) {
-      res.status(403).json({ message: "Invalid category" });
+      res.status(404).json({ message: "Invalid category" });
       return;
     }
   }
 
   const now = new Date();
+  const { month, year } = getBusinessMonthYear(now);
 
   const transaction = await prisma.transaction.create({
     data: {
@@ -42,8 +46,8 @@ export async function createTransaction(req: Request, res: Response) {
       type,
       description,
       categoryId,
-      month: now.getMonth() + 1,
-      year: now.getFullYear(),
+      month,
+      year,
       date: now,
     },
   });
@@ -54,9 +58,9 @@ export async function createTransaction(req: Request, res: Response) {
 export async function getTransactions(req: Request, res: Response) {
   const { month: rawMonth, year: rawYear } = querySchema.parse(req.query);
 
-  const now = new Date();
-  const month = rawMonth || now.getMonth() + 1;
-  const year = rawYear || now.getFullYear();
+  const { month: currentMonth, year: currentYear } = getBusinessMonthYear();
+  const month = rawMonth || currentMonth;
+  const year = rawYear || currentYear;
 
   const transactions = await prisma.transaction.findMany({
     where: {
@@ -103,7 +107,7 @@ export async function updateTransaction(req: Request, res: Response) {
       where: { id: categoryId, userId },
     });
     if (!category) {
-      res.status(403).json({ message: "Invalid category" });
+      res.status(404).json({ message: "Invalid category" });
       return;
     }
   }
@@ -124,7 +128,7 @@ export async function updateTransaction(req: Request, res: Response) {
       categoryId,
     },
   });
-  res.status(200).json({ updatedTransaction });
+  res.status(200).json({ transaction: updatedTransaction });
 }
 
 export async function deleteTransaction(req: Request, res: Response) {
@@ -150,9 +154,9 @@ export async function getTransactionsSummary(req: Request, res: Response) {
   const { month: rawMonth, year: rawYear } = querySchema.parse(req.query);
   const userId = req.user.id;
 
-  const now = new Date();
-  const month = rawMonth || now.getMonth() + 1;
-  const year = rawYear || now.getFullYear();
+  const { month: currentMonth, year: currentYear } = getBusinessMonthYear();
+  const month = rawMonth || currentMonth;
+  const year = rawYear || currentYear;
 
   const [expenseSummary, incomeSummary] = await Promise.all([
     prisma.transaction.aggregate({
@@ -174,24 +178,29 @@ export async function getTransactionsSummary(req: Request, res: Response) {
       _sum: { amount: true },
     }),
   ]);
-  const income = Number(incomeSummary._sum.amount ?? 0);
-  const expense = Number(expenseSummary._sum.amount ?? 0);
-  const balance = income - expense;
+  const incomeCents = Math.round(Number(incomeSummary._sum.amount ?? 0) * 100);
+  const expenseCents = Math.round(
+    Number(expenseSummary._sum.amount ?? 0) * 100,
+  );
 
-  res.status(200).json({ income, expense, balance });
+  res.status(200).json({
+    income: incomeCents / 100,
+    expense: expenseCents / 100,
+    balance: (incomeCents - expenseCents) / 100,
+  });
 }
 
 export async function getCategorySpending(req: Request, res: Response) {
   const { month: rawMonth, year: rawYear } = querySchema.parse(req.query);
   const userId = req.user.id;
 
-  const now = new Date();
-  const month = rawMonth || now.getMonth() + 1;
-  const year = rawYear || now.getFullYear();
+  const { month: currentMonth, year: currentYear } = getBusinessMonthYear();
+  const month = rawMonth || currentMonth;
+  const year = rawYear || currentYear;
 
   const spending = await prisma.transaction.groupBy({
     by: ["categoryId"],
-    where: { userId, month, year },
+    where: { userId, month, year, type: "EXPENSE" },
     _sum: { amount: true },
   });
 
