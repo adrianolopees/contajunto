@@ -6,7 +6,7 @@ import AppShell from "./components/layout/AppShell";
 import type React from "react";
 import Dashboard from "./pages/Dashboard";
 import { Profile } from "./pages/profile/Profile";
-import { GroupDashboard } from "./pages/group/GroupDashboard";
+import { FamilyGroupPage } from "./pages/group/FamilyGroupPage";
 import CategoryList from "./pages/categories/CategoryList";
 import TransactionList from "./pages/transactions/TransactionList";
 
@@ -56,7 +56,7 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/transactions" element={<TransactionList />} />
           <Route path="/categories" element={<CategoryList />} />
-          <Route path="/familyGroup" element={<GroupDashboard />} />
+          <Route path="/familyGroup" element={<FamilyGroupPage />} />
           <Route path="/me" element={<Profile />} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

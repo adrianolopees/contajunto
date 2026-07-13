@@ -1,4 +1,5 @@
 import { api } from "@/lib/api";
+import type { Transaction, TransactionsSummary } from "./transactions";
 
 export interface GroupMember {
   id: string;
@@ -40,4 +41,20 @@ export async function joinGroup(inviteCode: string): Promise<GroupMembership> {
 export async function leaveGroup(): Promise<GroupMembership> {
   const res = await api.delete("/groups/leave");
   return res.data.group;
+}
+
+export async function getGroupTransactions(params?: {
+  month?: number;
+  year?: number;
+}): Promise<Transaction[]> {
+  const res = await api.get("/groups/transactions", { params });
+  return res.data.transactions;
+}
+
+export async function getGroupTransactionsSummary(params?: {
+  month?: number;
+  year?: number;
+}): Promise<TransactionsSummary> {
+  const res = await api.get("/groups/transactions/summary", { params });
+  return res.data;
 }
