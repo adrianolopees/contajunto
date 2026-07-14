@@ -7,6 +7,7 @@ import TransactionForm from "@/components/transactions/TransactionForm";
 import { useMonthNavigation } from "@/hooks/useMonthNavigation";
 import { formatCurrency } from "@/lib/format";
 import { Plus } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
 
 export default function TransactionList() {
   const { month, year, prev, next } = useMonthNavigation();
@@ -62,9 +63,7 @@ export default function TransactionList() {
       {isLoading ? (
         <p className="py-8 text-center text-muted-foreground">Carregando...</p>
       ) : transactions.length === 0 ? (
-        <p className="py-8 text-center text-muted-foreground">
-          Nenhuma transação neste mês.
-        </p>
+        <EmptyState message="Nenhuma transação neste mes." />
       ) : (
         <ul className="mt-4 space-y-2">
           {transactions.map((transaction) => (

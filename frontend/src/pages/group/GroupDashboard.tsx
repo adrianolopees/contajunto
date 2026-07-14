@@ -15,6 +15,7 @@ import { useMonthNavigation } from "@/hooks/useMonthNavigation";
 import { formatCurrency } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import EmptyState from "@/components/EmptyState";
 import {
   Dialog,
   DialogContent,
@@ -159,9 +160,7 @@ export function GroupDashboard() {
             Carregando...
           </p>
         ) : transactions.length === 0 ? (
-          <p className="py-8 text-center text-muted-foreground">
-            Nenhuma transação neste mês.
-          </p>
+          <EmptyState message="Nenhuma transação neste mes." />
         ) : (
           <ul className="space-y-2">
             {transactions.map((transaction) => (

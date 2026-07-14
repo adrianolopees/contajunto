@@ -10,6 +10,7 @@ import { formatCurrency } from "@/lib/format";
 import * as Icons from "lucide-react";
 import { Plus } from "lucide-react";
 import CategoryForm from "@/components/categories/CategoryForm";
+import EmptyState from "@/components/EmptyState";
 
 export default function CategoryList() {
   const { month, year, prev, next } = useMonthNavigation();
@@ -69,13 +70,13 @@ export default function CategoryList() {
       {isLoading ? (
         <p className="py-8 text-center text-muted-foreground">Carregando...</p>
       ) : categories.length === 0 ? (
-        <p className="py-8 text-center text-muted-foreground">
-          Nenhuma categoria cadastrada.
-        </p>
+        <EmptyState message="Nenhuma categoria cadastrada." icon={Icons.Tag} />
       ) : (
         <ul className="mt-4 grid grid-cols-2 gap-3">
           {enrichedCategories.map((category) => {
-            const Icon = Icons[category.icon as keyof typeof Icons] as Icons.LucideIcon;
+            const Icon = Icons[
+              category.icon as keyof typeof Icons
+            ] as Icons.LucideIcon;
             return (
               <li key={category.id}>
                 <button

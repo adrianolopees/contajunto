@@ -19,7 +19,7 @@ const profileSchema = z.object({
   name: z.string().min(2, "Nome deve ter no mínimo 2 caracteres").max(100),
 });
 
-export const Profile = () => {
+export function Profile() {
   const { user, updateUser } = useAuth();
   const {
     register,
@@ -77,4 +77,4 @@ export const Profile = () => {
       </Card>
     </div>
   );
-};
+}

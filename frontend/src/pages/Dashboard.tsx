@@ -10,6 +10,7 @@ import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import MonthPicker from "@/components/MonthPicker";
 import { useMonthNavigation } from "@/hooks/useMonthNavigation";
 import { formatCurrency } from "@/lib/format";
+import EmptyState from "@/components/EmptyState";
 
 export default function Dashboard() {
   const { month, year, prev, next } = useMonthNavigation();
@@ -60,7 +61,7 @@ export default function Dashboard() {
         {isLoading ? (
           <p>Carregando...</p>
         ) : transactions.length === 0 ? (
-          <p>Nenhuma transação neste mês.</p>
+          <EmptyState message="Nenhuma transação neste mes." />
         ) : (
           <ul>
             {transactions.map((t) => (
