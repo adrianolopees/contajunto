@@ -8,9 +8,12 @@ import {
   LogOut,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { Button } from "../ui/button";
+import { Button } from "@/components/ui/button";
+import { Sun, Moon } from "lucide-react";
+import { useTheme } from "@/hooks/useTheme";
 
 export default function AppShell() {
+  const { theme, toggleTheme } = useTheme();
   const { logout, user } = useAuth();
   const navigate = useNavigate();
 
@@ -32,6 +35,14 @@ export default function AppShell() {
           {user?.name.split(" ")[0]}
           <Button onClick={handleLogout} variant="ghost" size="icon">
             <LogOut />
+          </Button>
+          <Button
+            onClick={toggleTheme}
+            variant="ghost"
+            size="icon"
+            aria-label="Alternar tema"
+          >
+            {theme === "dark" ? <Sun /> : <Moon />}
           </Button>
         </div>
       </header>
