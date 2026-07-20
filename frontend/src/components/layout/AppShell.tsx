@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Sun, Moon } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 export default function AppShell() {
   const { theme, toggleTheme } = useTheme();
@@ -48,7 +49,9 @@ export default function AppShell() {
       </header>
 
       <main className="flex-1 pt-14 pb-16 overflow-y-auto">
-        <Outlet />
+        <ErrorBoundary>
+          <Outlet />
+        </ErrorBoundary>
       </main>
 
       <nav className="fixed bottom-0 h-16 z-50 flex items-center justify-around px-4 left-0 right-0 border-t bg-background">
