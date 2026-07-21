@@ -17,5 +17,8 @@
   },
   "lint-staged": {
     "backend/src/**/*.ts": "bash -c './backend/node_modules/.bin/tsc --noEmit --project backend/tsconfig.json'"
+  },
+  "dependencies": {
+    "@fontsource-variable/manrope": "^5.3.0"
   }
 }
