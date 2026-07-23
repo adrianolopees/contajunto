@@ -1,12 +1,14 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Moon, Sun } from "lucide-react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/hooks/useAuth";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
+import { useTheme } from "@/hooks/useTheme";
 
 const loginSchema = z.object({
   email: z.email({ message: "E-mail inválido" }),
@@ -17,6 +19,7 @@ const loginSchema = z.object({
 });
 
 export default function Login() {
+  const { theme, toggleTheme } = useTheme();
   const { login } = useAuth();
   const {
     register,
@@ -38,12 +41,22 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background px-7 pt-22 pb-10 ">
+    <div className="flex relative min-h-dvh md:mx-auto md:max-w-sm flex-col bg-background px-7 pt-22 pb-10 ">
       <div className="mb-10 flex flex-col items-center gap-3.5">
+        <Button
+          onClick={toggleTheme}
+          variant="outline"
+          size="icon"
+          aria-label="Alternar tema"
+          className="absolute top-5 right-5"
+        >
+          {theme === "dark" ? <Sun /> : <Moon />}
+        </Button>
         <div className="relative h-14 w-14">
           <div className="absolute top-1/2 left-1/2 h-4.75 w-14 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[9px] bg-primary" />
           <div className="absolute top-1/2 left-1/2 h-4.75 w-14 -translate-x-1/2 -translate-y-1/2 -rotate-45 rounded-[9px] bg-income" />
         </div>
+
         <h1 className="font-heading text-3xl font-extrabold text-foreground">
           conta junto
         </h1>
