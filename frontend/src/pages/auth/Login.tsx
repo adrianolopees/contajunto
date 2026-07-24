@@ -41,7 +41,7 @@ export default function Login() {
   }
 
   return (
-    <div className="flex relative min-h-dvh md:mx-auto md:max-w-sm flex-col bg-background px-7 pt-22 pb-10 ">
+    <div className="flex relative min-h-dvh md:mx-auto md:max-w-sm flex-col bg-background px-7 pt-22 pb-10">
       <div className="mb-10 flex flex-col items-center gap-3.5">
         <Button
           onClick={toggleTheme}
@@ -84,14 +84,13 @@ export default function Login() {
             )}
           </div>
           <div className="grid gap-2">
-            <div className="flex items-center">
-              <Label
-                htmlFor="password"
-                className="leading-relaxed text-muted-foreground"
-              >
-                SENHA
-              </Label>
-            </div>
+            <Label
+              htmlFor="password"
+              className="leading-relaxed text-muted-foreground"
+            >
+              SENHA
+            </Label>
+
             <Input
               {...register("password")}
               id="password"
