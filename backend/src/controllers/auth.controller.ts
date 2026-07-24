@@ -27,7 +27,6 @@ const registerSchema = z.object({
     .string({ error: "Senha é obrigatória" })
     .min(8, { error: "A senha deve ter no mínimo 8 caracteres" })
     .max(72, { error: "A senha não pode exceder 72 caracteres" }),
-  defaultCategoryIds: z.uuid().array().optional(),
 });
 
 const loginSchema = z.object({
@@ -45,9 +44,7 @@ const loginSchema = z.object({
 const JWT_SECRET = process.env.JWT_SECRET as string;
 
 export async function register(req: Request, res: Response) {
-  const { name, email, password, defaultCategoryIds } = registerSchema.parse(
-    req.body,
-  );
+  const { name, email, password } = registerSchema.parse(req.body);
 
   const existingUser = await prisma.user.findUnique({ where: { email } });
 
@@ -56,11 +53,7 @@ export async function register(req: Request, res: Response) {
     return;
   }
 
-  const defaultCategories = defaultCategoryIds?.length
-    ? await prisma.defaultCategory.findMany({
-        where: { id: { in: defaultCategoryIds } },
-      })
-    : [];
+  const defaultCategories = await prisma.defaultCategory.findMany();
 
   const passwordHash = await argon2.hash(password);
 

@@ -15,12 +15,7 @@ interface AuthContextData {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  register: (
-    name: string,
-    email: string,
-    password: string,
-    defaultCategoryIds: string[],
-  ) => Promise<void>;
+  register: (name: string, email: string, password: string) => Promise<void>;
   updateUser: (partial: Partial<User>) => void;
 }
 
@@ -64,17 +59,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(res.data.user);
   }
 
-  async function register(
-    name: string,
-    email: string,
-    password: string,
-    defaultCategoryIds: string[],
-  ) {
+  async function register(name: string, email: string, password: string) {
     await api.post("/auth/register", {
       name,
       email,
       password,
-      defaultCategoryIds,
     });
   }
 

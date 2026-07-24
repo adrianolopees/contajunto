@@ -551,7 +551,7 @@ describe("GET /transactions/summary/by-category", () => {
     const categoryRes = await request(app)
       .post("/categories")
       .set("Authorization", `Bearer ${accessToken}`)
-      .send({ name: "Salário", color: "blue", icon: "wallet" });
+      .send({ name: "Bônus", color: "blue", icon: "wallet" });
 
     await request(app)
       .post("/transactions")

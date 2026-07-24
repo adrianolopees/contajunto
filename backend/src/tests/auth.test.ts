@@ -50,25 +50,28 @@ describe("POST /auth/register", () => {
     expect(res.status).toBe(400);
   });
 
-  it("should register without categories when defaultCategoryIds is omitted", async () => {
+  it("should copy all default categories automatically on register", async () => {
+    const defaultsRes = await request(app).get("/categories/default");
+    const totalDefaults = defaultsRes.body.categoriesDefault.length;
+
     const res = await request(app).post("/auth/register").send(testUser);
 
     expect(res.status).toBe(201);
 
-    const categories = await request(app)
+    const loginRes = await request(app)
       .post("/auth/login")
-      .send({ email: testUser.email, password: testUser.password })
-      .then((loginRes) =>
-        request(app)
-          .get("/categories")
-          .set("Authorization", `Bearer ${loginRes.body.accessToken}`),
-      );
+      .send({ email: testUser.email, password: testUser.password });
 
-    expect(categories.body.categories).toHaveLength(0);
+    const categories = await request(app)
+      .get("/categories")
+      .set("Authorization", `Bearer ${loginRes.body.accessToken}`);
+
+    expect(categories.body.categories).toHaveLength(totalDefaults);
   });
 
-  it("should register and copy only selected default categories", async () => {
+  it("should ignore defaultCategoryIds sent in body and still copy all default categories", async () => {
     const defaultsRes = await request(app).get("/categories/default");
+    const totalDefaults = defaultsRes.body.categoriesDefault.length;
     const firstTwo = defaultsRes.body.categoriesDefault
       .slice(0, 2)
       .map((c: { id: string }) => c.id);
@@ -87,7 +90,7 @@ describe("POST /auth/register", () => {
       .get("/categories")
       .set("Authorization", `Bearer ${loginRes.body.accessToken}`);
 
-    expect(categories.body.categories).toHaveLength(2);
+    expect(categories.body.categories).toHaveLength(totalDefaults);
   });
 });
 

@@ -1,24 +1,15 @@
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import axios from "axios";
-import * as Icons from "lucide-react";
+import { useTheme } from "@/hooks/useTheme";
+import { Moon, Sun } from "lucide-react";
 
 const registerSchema = z
   .object({
@@ -36,7 +27,6 @@ const registerSchema = z
       .string({ error: "Senha é obrigatória" })
       .min(8, { error: "A senha deve ter no mínimo 8 caracteres" })
       .max(72, { error: "A senha não pode exceder 72 caracteres" }),
-    defaultCategoryIds: z.array(z.string()).optional(),
     confirmPassword: z
       .string({ error: "Senha é obrigatória" })
       .min(8, { error: "A senha deve ter no mínimo 8 caracteres" })
@@ -47,62 +37,25 @@ const registerSchema = z
     path: ["confirmPassword"],
   });
 
-interface DefaultCategory {
-  id: string;
-  name: string;
-  color: string;
-  icon: string;
-}
-
 export default function Register() {
   const { register, login } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
-  const [categories, setCategories] = useState<DefaultCategory[]>([]);
-  const [step, setStep] = useState(1);
   const {
     register: registerField,
     handleSubmit,
     setError,
-    trigger,
     formState: { errors },
   } = useForm({ resolver: zodResolver(registerSchema) });
 
-  useEffect(() => {
-    async function fetchCategories() {
-      try {
-        const res = await api.get("/categories/default");
-        setCategories(res.data.categoriesDefault);
-      } catch {
-        // categories optional - silence fail
-      }
-    }
-    fetchCategories();
-  }, []);
-
-  async function handleNext() {
-    const valid = await trigger([
-      "name",
-      "email",
-      "password",
-      "confirmPassword",
-    ]);
-    if (valid) setStep(2);
-  }
-
   async function onSubmit(data: z.infer<typeof registerSchema>) {
     try {
-      await register(
-        data.name,
-        data.email,
-        data.password,
-        data.defaultCategoryIds ?? [],
-      );
+      await register(data.name, data.email, data.password);
       await login(data.email, data.password);
       toast.success("Conta criada com sucesso!");
       navigate("/dashboard");
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 409) {
-        setStep(1);
         setError("email", { message: "Email já cadastrado" });
       } else {
         toast.error("Erro ao criar conta. Tente novamente.");
@@ -110,142 +63,126 @@ export default function Register() {
     }
   }
   return (
-    <div className="flex min-h-screen items-center justify-center ">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle>Registre-se</CardTitle>
-          <CardDescription>
-            Inscreva-se para começar aproveitar nosso app.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)}>
-            <div className="flex flex-col gap-6">
-              {step === 1 && (
-                <>
-                  <div className="grid gap-2">
-                    <Label htmlFor="name">Nome</Label>
-                    <Input
-                      {...registerField("name")}
-                      id="name"
-                      type="text"
-                      placeholder="name"
-                    />
-                    {errors.name && (
-                      <p className="text-sm text-destructive">
-                        {errors.name.message}
-                      </p>
-                    )}
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      {...registerField("email")}
-                      id="email"
-                      type="email"
-                      placeholder="m@example.com"
-                    />
-                    {errors.email && (
-                      <p className="text-sm text-destructive">
-                        {errors.email.message}
-                      </p>
-                    )}
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="password">Senha</Label>
-                    <Input
-                      {...registerField("password")}
-                      id="password"
-                      type="password"
-                      placeholder="senha"
-                    />
-                    {errors.password && (
-                      <p className="text-sm text-destructive">
-                        {errors.password.message}
-                      </p>
-                    )}
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="confirmaPassword">Confirme sua senha</Label>
-                    <Input
-                      {...registerField("confirmPassword")}
-                      id="confirmPassword"
-                      type="password"
-                      placeholder="xxxxxxxxxx"
-                    />
-                    {errors.confirmPassword && (
-                      <p className="text-sm text-destructive">
-                        {errors.confirmPassword.message}
-                      </p>
-                    )}
-                  </div>
-                </>
-              )}
-              {step === 2 && (
-                <div className="grid gap-2">
-                  <Label>Categorias (opcional)</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {categories.map((category) => {
-                      const Icon = Icons[category.icon as keyof typeof Icons] as Icons.LucideIcon;
-                      return (
-                        <label
-                          key={category.id}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border cursor-pointer text-sm has-checked:bg-primary has-checked:text-primary-foreground has-checked:border-primary"
-                        >
-                          <input
-                            type="checkbox"
-                            value={category.id}
-                            className="sr-only"
-                            {...registerField("defaultCategoryIds")}
-                          />
-                          {Icon && <Icon size={14} color={category.color} />}
-                          {category.name}
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
+    <div className="flex relative min-h-dvh md:mx-auto md:max-w-sm flex-col bg-background px-7 pt-22 pb-10">
+      <div className="mb-10 flex flex-col items-center gap-3.5">
+        <Button
+          onClick={toggleTheme}
+          variant="outline"
+          size="icon"
+          aria-label="Alternar tema"
+          className="absolute top-5 right-5"
+        >
+          {theme === "dark" ? <Sun /> : <Moon />}
+        </Button>
 
-            {step === 1 && (
-              <Button
-                type="button"
-                className="w-full cursor-pointer"
-                onClick={handleNext}
-              >
-                Próximo
-              </Button>
-            )}
-            {step === 2 && (
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setStep(1)}
-                >
-                  Voltar
-                </Button>
-                <Button type="submit" className="flex-1 cursor-pointer">
-                  Criar conta
-                </Button>
-              </div>
-            )}
-          </form>
-        </CardContent>
-        <CardFooter>
-          <p>
-            Já tem conta?{""}
-            <Button
-              variant="link"
-              className="p-0 h-auto cursor-pointer"
-              onClick={() => navigate("/login")}
+        <div className="relative h-14 w-14">
+          <div className="absolute top-1/2 left-1/2 h-4.75 w-14 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[9px] bg-primary" />
+          <div className="absolute top-1/2 left-1/2 h-4.75 w-14 -translate-x-1/2 -translate-y-1/2 -rotate-45 rounded-[9px] bg-income" />
+        </div>
+
+        <h1 className="font-heading text-3xl font-extrabold text-foreground">
+          Criar conta
+        </h1>
+        <p className="max-w-65 text-center text-sm leading-relaxed text-muted-foreground">
+          Comece a organizar suas finanças em minutos.
+        </p>
+      </div>
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <div className="flex flex-col gap-6">
+          <div className="grid gap-2">
+            <Label
+              htmlFor="name"
+              className="leading-relaxed text-muted-foreground"
             >
-              Login
-            </Button>
-          </p>
-        </CardFooter>
-      </Card>
+              Nome
+            </Label>
+            <Input
+              {...registerField("name")}
+              id="name"
+              type="text"
+              placeholder="Seu nome completo"
+            />
+            {errors.name && (
+              <p className="text-sm text-destructive">{errors.name.message}</p>
+            )}
+          </div>
+          <div className="grid gap-2">
+            <Label
+              htmlFor="email"
+              className="leading-relaxed text-muted-foreground"
+            >
+              E-MAIL
+            </Label>
+            <Input
+              {...registerField("email")}
+              id="email"
+              type="email"
+              placeholder="voce@email.com"
+            />
+            {errors.email && (
+              <p className="text-sm text-destructive">{errors.email.message}</p>
+            )}
+          </div>
+          <div className="grid gap-2">
+            <Label
+              htmlFor="password"
+              className="leading-relaxed text-muted-foreground"
+            >
+              SENHA
+            </Label>
+            <Input
+              {...registerField("password")}
+              id="password"
+              type="password"
+              placeholder="••••••••••"
+            />
+            {errors.password && (
+              <p className="text-sm text-destructive">
+                {errors.password.message}
+              </p>
+            )}
+          </div>
+          <div className="grid gap-2">
+            <Label
+              htmlFor="confirmaPassword"
+              className="leading-relaxed text-muted-foreground"
+            >
+              CONFIRMAR SENHA
+            </Label>
+            <Input
+              {...registerField("confirmPassword")}
+              id="confirmPassword"
+              type="password"
+              placeholder="••••••••••"
+            />
+            {errors.confirmPassword && (
+              <p className="text-sm text-destructive">
+                {errors.confirmPassword.message}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <Button
+            type="submit"
+            size="xl"
+            className="w-full mt-8 cursor-pointer text-white font-extrabold"
+          >
+            Criar conta
+          </Button>
+        </div>
+      </form>
+      <p className="mt-auto text-center text-sm leading-relaxed text-muted-foreground">
+        Já tem conta?{""}
+        <Button
+          variant="link"
+          className="p-1 h-auto mt-3 font-extrabold"
+          onClick={() => navigate("/login")}
+        >
+          Entrar
+        </Button>
+      </p>
     </div>
   );
 }

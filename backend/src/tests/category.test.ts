@@ -134,7 +134,7 @@ describe("POST /categories", () => {
     expect(res.status).toBe(409);
   });
 
-  it("should return 201 when category name matches a default (user starts with no categories)", async () => {
+  it("should return 409 when category name matches an already-copied default category", async () => {
     const accessToken = await createAndAuthenticateUser();
 
     const res = await request(app)
@@ -142,7 +142,7 @@ describe("POST /categories", () => {
       .set("Authorization", `Bearer ${accessToken}`)
       .send({ name: "Saúde", color: "blue", icon: "plane" });
 
-    expect(res.status).toBe(201);
+    expect(res.status).toBe(409);
   });
 
   it("should allow two users to have a category with the same name", async () => {
