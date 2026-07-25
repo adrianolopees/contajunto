@@ -28,7 +28,7 @@ export async function createTransaction(req: Request, res: Response) {
 
   if (categoryId) {
     const category = await prisma.category.findFirst({
-      where: { id: categoryId, userId },
+      where: { id: categoryId, userId, type },
     });
     if (!category) {
       res.status(404).json({ message: "Invalid category" });
@@ -102,15 +102,6 @@ export async function updateTransaction(req: Request, res: Response) {
   const { amount, type, description, categoryId } =
     updateTransactionSchema.parse(req.body);
 
-  if (categoryId) {
-    const category = await prisma.category.findFirst({
-      where: { id: categoryId, userId },
-    });
-    if (!category) {
-      res.status(404).json({ message: "Invalid category" });
-      return;
-    }
-  }
   const transaction = await prisma.transaction.findFirst({
     where: { id: transactionId, userId },
   });
@@ -119,6 +110,17 @@ export async function updateTransaction(req: Request, res: Response) {
     res.status(404).json({ message: "Transaction not found" });
     return;
   }
+
+  if (categoryId) {
+    const category = await prisma.category.findFirst({
+      where: { id: categoryId, userId, type: type ?? transaction.type },
+    });
+    if (!category) {
+      res.status(404).json({ message: "Invalid category" });
+      return;
+    }
+  }
+
   const updatedTransaction = await prisma.transaction.update({
     where: { id: transactionId },
     data: {

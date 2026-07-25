@@ -65,6 +65,7 @@ export async function register(req: Request, res: Response) {
 
     await tx.category.createMany({
       data: defaultCategories.map((cat) => ({
+        type: cat.type,
         name: cat.name,
         color: cat.color,
         icon: cat.icon,

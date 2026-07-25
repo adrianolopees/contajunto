@@ -3,6 +3,7 @@ import prisma from "../lib/prisma.js";
 import z from "zod";
 
 const categorySchema = z.object({
+  type: z.enum(["INCOME", "EXPENSE"]),
   name: z.string().min(2),
   color: z.string(),
   icon: z.string(),
@@ -11,7 +12,7 @@ const categorySchema = z.object({
 const updateCategorySchema = categorySchema.partial();
 
 export async function createCategory(req: Request, res: Response) {
-  const { name, color, icon } = categorySchema.parse(req.body);
+  const { type, name, color, icon } = categorySchema.parse(req.body);
   const userId = req.user.id;
 
   const existingCategory = await prisma.category.findFirst({
@@ -24,7 +25,7 @@ export async function createCategory(req: Request, res: Response) {
   }
 
   const category = await prisma.category.create({
-    data: { userId, name, color, icon },
+    data: { userId, type, name, color, icon },
     omit: { userId: true },
   });
 

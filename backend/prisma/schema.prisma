@@ -60,6 +60,7 @@ model Transaction {
 
 model Category {
   id            String        @id @default(uuid())
+  type          TransactionType
   name          String
   color         String
   icon          String
@@ -71,6 +72,7 @@ model Category {
 
 model DefaultCategory {
   id            String @id @default(uuid())
+  type          TransactionType
   name          String
   color         String
   icon          String
