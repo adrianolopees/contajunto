@@ -1,7 +1,8 @@
 import "dotenv/config";
 import prisma from "../src/lib/prisma.js";
+import type { Prisma } from "../src/generated/prisma/index.js";
 
-const defaultCategories = [
+const defaultCategories: Prisma.DefaultCategoryCreateManyInput[] = [
   // Despesas
   { type: "EXPENSE", name: "Alimentação", color: "#f97316", icon: "Utensils" },
   { type: "EXPENSE", name: "Moradia", color: "#3b82f6", icon: "Home" },
@@ -16,6 +17,7 @@ const defaultCategories = [
   { type: "EXPENSE", name: "Viagens", color: "#14b8a6", icon: "Plane" },
   { type: "EXPENSE", name: "Dívidas", color: "#6b7280", icon: "CreditCard" },
   { type: "EXPENSE", name: "Outros", color: "#94a3b8", icon: "Package" },
+
   // Receitas
   { type: "INCOME", name: "Salário", color: "#22c55e", icon: "Banknote" },
   {
