@@ -94,7 +94,7 @@ export default function Register() {
               htmlFor="name"
               className="leading-relaxed text-muted-foreground"
             >
-              Nome
+              NOME
             </Label>
             <Input
               {...registerField("name")}

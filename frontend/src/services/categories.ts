@@ -2,6 +2,7 @@ import { api } from "@/lib/api";
 
 export interface Category {
   id: string;
+  type: "INCOME" | "EXPENSE";
   name: string;
   color: string;
   icon: string;

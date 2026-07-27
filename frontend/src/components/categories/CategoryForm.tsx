@@ -25,18 +25,46 @@ import * as Icons from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const ICON_OPTIONS = [
-  "Utensils", "Home", "Car", "HeartPulse", "BookOpen", "Gamepad2",
-  "Shirt", "RefreshCw", "Sparkles", "PawPrint", "Plane", "CreditCard",
-  "Package", "Banknote", "Receipt", "Briefcase", "TrendingUp", "Plus",
-  "ShoppingCart", "Coffee", "Music", "Dumbbell", "Laptop", "Baby",
-  "Gift", "Fuel", "Smartphone", "Zap", "Building", "Wallet",
+  "Utensils",
+  "Home",
+  "Car",
+  "HeartPulse",
+  "BookOpen",
+  "Gamepad2",
+  "Shirt",
+  "RefreshCw",
+  "Sparkles",
+  "PawPrint",
+  "Plane",
+  "CreditCard",
+  "Package",
+  "Banknote",
+  "Receipt",
+  "Briefcase",
+  "TrendingUp",
+  "Plus",
+  "ShoppingCart",
+  "Coffee",
+  "Music",
+  "Dumbbell",
+  "Laptop",
+  "Baby",
+  "Gift",
+  "Fuel",
+  "Smartphone",
+  "Zap",
+  "Building",
+  "Wallet",
 ];
 
 const CategoryFormSchema = z.object({
+  type: z.enum(["INCOME", "EXPENSE"]),
   name: z.string().min(2, "Minimo 2 caracateres"),
   color: z.string().min(1, "Precisa existir a cor"),
   icon: z.string().min(1, "Selecione um ícone"),
 });
+
+const EditCategoryFormSchema = CategoryFormSchema.partial({ type: true });
 
 interface CategoryFormProps {
   open: boolean;
@@ -51,8 +79,10 @@ export default function CategoryForm({
   category,
   onSuccess,
 }: CategoryFormProps) {
-  const form = useForm<z.infer<typeof CategoryFormSchema>>({
-    resolver: zodResolver(CategoryFormSchema),
+  const form = useForm<z.infer<typeof EditCategoryFormSchema>>({
+    resolver: zodResolver(
+      category ? EditCategoryFormSchema : CategoryFormSchema,
+    ),
   });
 
   const selectedIcon = useWatch({ control: form.control, name: "icon" });
@@ -60,6 +90,7 @@ export default function CategoryForm({
 
   useEffect(() => {
     form.reset({
+      type: category?.type ?? "EXPENSE",
       name: category?.name ?? "",
       color: category?.color ?? "#6b7280",
       icon: category?.icon ?? "",
@@ -68,10 +99,10 @@ export default function CategoryForm({
 
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
-  async function onSubmit(data: z.infer<typeof CategoryFormSchema>) {
+  async function onSubmit(data: z.infer<typeof EditCategoryFormSchema>) {
     try {
       if (!category) {
-        await createCategory(data);
+        await createCategory(CategoryFormSchema.parse(data));
         toast.success("Categoria criada com sucesso!");
       } else {
         await updateCategory(category.id, data);
@@ -144,13 +175,17 @@ export default function CategoryForm({
             <Label>Ícone</Label>
             <div className="mt-2 grid grid-cols-6 gap-2">
               {ICON_OPTIONS.map((name) => {
-                const Icon = Icons[name as keyof typeof Icons] as Icons.LucideIcon;
+                const Icon = Icons[
+                  name as keyof typeof Icons
+                ] as Icons.LucideIcon;
                 if (!Icon) return null;
                 return (
                   <button
                     key={name}
                     type="button"
-                    onClick={() => form.setValue("icon", name, { shouldValidate: true })}
+                    onClick={() =>
+                      form.setValue("icon", name, { shouldValidate: true })
+                    }
                     className={cn(
                       "flex items-center justify-center rounded-lg border p-2 transition-colors",
                       selectedIcon === name
@@ -191,8 +226,8 @@ export default function CategoryForm({
             <DialogTitle>Excluir categoria?</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            As transações que usam essa categoria ficam sem categoria. Essa
-            ação não pode ser desfeita.
+            As transações que usam essa categoria ficam sem categoria. Essa ação
+            não pode ser desfeita.
           </p>
           <DialogFooter>
             <Button
