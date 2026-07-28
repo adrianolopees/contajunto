@@ -1,45 +1,38 @@
-import { Outlet, NavLink, useNavigate } from "react-router-dom";
-import {
-  LayoutDashboard,
-  ArrowLeftRight,
-  Tags,
-  Users,
-  CircleUser,
-  LogOut,
-} from "lucide-react";
+import { Outlet, NavLink } from "react-router-dom";
+import { LayoutDashboard, ArrowLeftRight, Tags, Users } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Sun, Moon } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import Logo from "@/components/Logo";
 
 export default function AppShell() {
   const { theme, toggleTheme } = useTheme();
-  const { logout, user } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
 
-  async function handleLogout() {
-    try {
-      await logout();
-    } finally {
-      navigate("/login");
-    }
-  }
   return (
     <div className="flex flex-col min-h-screen">
       <header
         className="fixed top-0 h-14 z-50 flex items-center justify-between px-4 left-0 right-0
       border-b bg-background"
       >
-        <h1>LOGO</h1>
-        <div className="flex items-center gap-2">
-          {user?.name.split(" ")[0]}
-          <Button onClick={handleLogout} variant="ghost" size="icon">
-            <LogOut />
-          </Button>
+        <Logo size={20} />
+
+        <div className="flex items-center gap-3">
+          <button className="flex items-center gap-2">
+            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">
+              {user?.name[0]}
+            </div>
+            <span className="max-w-14 truncate text-xs font-bold">
+              {user?.name.split(" ")[0]}
+            </span>
+          </button>
+
+          <div className="w-px h-4.5 bg-border"></div>
           <Button
             onClick={toggleTheme}
-            variant="ghost"
+            variant="outline"
             size="icon"
             aria-label="Alternar tema"
           >
@@ -48,58 +41,71 @@ export default function AppShell() {
         </div>
       </header>
 
-      <main className="flex-1 pt-14 pb-16 overflow-y-auto">
+      <main className="flex-1 pt-14 pb-20 overflow-y-auto">
         <ErrorBoundary>
           <Outlet />
         </ErrorBoundary>
       </main>
 
-      <nav className="fixed bottom-0 h-16 z-50 flex items-center justify-around px-4 left-0 right-0 border-t bg-background">
-        <NavLink
-          to="/dashboard"
-          className={({ isActive }) =>
-            `flex flex-col items-center ${isActive ? "text-primary" : "text-muted-foreground"}`
-          }
-        >
-          <LayoutDashboard size={20} />
-          <span className="text-xs">Dashboard</span>
+      <nav className="fixed bottom-2.5 left-3.5 right-3.5 z-50 flex items-center justify-around p-1.5 rounded-3xl border bg-card shadow-nav">
+        <NavLink to="/dashboard" className="flex flex-col items-center">
+          {({ isActive }) => (
+            <div
+              className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-[16px] ${
+                isActive
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground"
+              }`}
+            >
+              <LayoutDashboard size={20} />
+              <span className="text-xs">Dashboard</span>
+            </div>
+          )}
         </NavLink>
 
-        <NavLink
-          to="/transactions"
-          className={({ isActive }) =>
-            `flex flex-col items-center ${isActive ? "text-primary" : "text-muted-foreground"}`
-          }
-        >
-          <ArrowLeftRight size={20} />
-          <span className="text-xs">Transações</span>
+        <NavLink to="/transactions" className="flex flex-col items-center">
+          {({ isActive }) => (
+            <div
+              className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-[16px] ${
+                isActive
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground"
+              }`}
+            >
+              <ArrowLeftRight size={20} />
+              <span className="text-xs">Transações</span>
+            </div>
+          )}
         </NavLink>
-        <NavLink
-          to="/categories"
-          className={({ isActive }) =>
-            `flex flex-col items-center ${isActive ? "text-primary" : "text-muted-foreground"}`
-          }
-        >
-          <Tags size={20} />
-          <span className="text-xs">Categorias</span>
+
+        <NavLink to="/categories" className="flex flex-col items-center">
+          {({ isActive }) => (
+            <div
+              className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-[16px] ${
+                isActive
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground"
+              }`}
+            >
+              <Tags size={20} />
+              <span className="text-xs">Categorias</span>
+            </div>
+          )}
         </NavLink>
-        <NavLink
-          to="/familyGroup"
-          className={({ isActive }) =>
-            `flex flex-col items-center ${isActive ? "text-primary" : "text-muted-foreground"}`
-          }
-        >
-          <Users size={20} />
-          <span className="text-xs">Grupo</span>
-        </NavLink>
-        <NavLink
-          to="/me"
-          className={({ isActive }) =>
-            `flex flex-col items-center ${isActive ? "text-primary" : "text-muted-foreground"}`
-          }
-        >
-          <CircleUser size={20} />
-          <span className="text-xs">Perfil</span>
+
+        <NavLink to="/familyGroup" className="flex flex-col items-center">
+          {({ isActive }) => (
+            <div
+              className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-[16px] ${
+                isActive
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground"
+              }`}
+            >
+              <Users size={20} />
+              <span className="text-xs">Grupo</span>
+            </div>
+          )}
         </NavLink>
       </nav>
     </div>

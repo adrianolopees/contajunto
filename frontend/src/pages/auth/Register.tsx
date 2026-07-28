@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import axios from "axios";
 import { useTheme } from "@/hooks/useTheme";
 import { Moon, Sun } from "lucide-react";
+import Logo from "@/components/Logo";
 
 const registerSchema = z
   .object({
@@ -75,10 +76,7 @@ export default function Register() {
           {theme === "dark" ? <Sun /> : <Moon />}
         </Button>
 
-        <div className="relative h-14 w-14">
-          <div className="absolute top-1/2 left-1/2 h-4.75 w-14 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[9px] bg-primary" />
-          <div className="absolute top-1/2 left-1/2 h-4.75 w-14 -translate-x-1/2 -translate-y-1/2 -rotate-45 rounded-[9px] bg-income" />
-        </div>
+        <Logo size={44} />
 
         <h1 className="font-heading text-3xl font-extrabold text-foreground">
           Criar conta
