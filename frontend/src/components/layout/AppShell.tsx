@@ -1,15 +1,35 @@
-import { Outlet, NavLink } from "react-router-dom";
-import { LayoutDashboard, ArrowLeftRight, Tags, Users } from "lucide-react";
+import { Outlet, NavLink, Link } from "react-router-dom";
+import {
+  LayoutDashboard,
+  ArrowLeftRight,
+  Tags,
+  Users,
+  User,
+  LogOut,
+} from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Sun, Moon } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import Logo from "@/components/Logo";
+import {
+  SheetTrigger,
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter,
+  SheetClose,
+} from "@/components/ui/sheet";
 
 export default function AppShell() {
   const { theme, toggleTheme } = useTheme();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+
+  async function handleLogout() {
+    await logout();
+  }
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -18,17 +38,48 @@ export default function AppShell() {
       border-b bg-background"
       >
         <Logo size={20} />
-
         <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">
-              {user?.name[0]}
-            </div>
-            <span className="max-w-14 truncate text-xs font-bold">
-              {user?.name.split(" ")[0]}
-            </span>
-          </button>
-
+          <Sheet>
+            <SheetTrigger className="flex items-center gap-2">
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">
+                {user?.name[0]}
+              </div>
+              <span className="max-w-14 truncate text-xs font-bold">
+                {user?.name.split(" ")[0]}
+              </span>
+            </SheetTrigger>
+            <SheetContent side="right">
+              <SheetHeader>
+                <SheetTitle>{user?.name}</SheetTitle>
+              </SheetHeader>
+              <SheetClose
+                render={
+                  <Link
+                    to="/me"
+                    className="mx-2 flex items-center gap-2 rounded-lg px-2 py-2 text-sm hover:bg-muted"
+                  />
+                }
+              >
+                <User size={18} />
+                Meu perfil
+              </SheetClose>
+              <SheetFooter>
+                <SheetClose
+                  render={
+                    <Button
+                      onClick={handleLogout}
+                      variant="destructive"
+                      className="gap-2"
+                      aria-label="Sair"
+                    />
+                  }
+                >
+                  <LogOut size={18} />
+                  Sair
+                </SheetClose>
+              </SheetFooter>
+            </SheetContent>
+          </Sheet>
           <div className="w-px h-4.5 bg-border"></div>
           <Button
             onClick={toggleTheme}
