@@ -6,6 +6,9 @@ import {
   Users,
   User,
   LogOut,
+  Settings,
+  Mail,
+  CircleQuestionMark,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -62,6 +65,39 @@ export default function AppShell() {
               >
                 <User size={18} />
                 Meu perfil
+              </SheetClose>
+              <SheetClose
+                render={
+                  <Link
+                    to="/"
+                    className="mx-2 flex items-center gap-2 rounded-lg px-2 py-2 text-sm hover:bg-muted"
+                  />
+                }
+              >
+                <Mail size={18} />
+                Notificações
+              </SheetClose>
+              <SheetClose
+                render={
+                  <Link
+                    to="/"
+                    className="mx-2 flex items-center gap-2 rounded-lg px-2 py-2 text-sm hover:bg-muted"
+                  />
+                }
+              >
+                <Settings size={18} />
+                Configurações
+              </SheetClose>
+              <SheetClose
+                render={
+                  <Link
+                    to="/"
+                    className="mx-2 flex items-center gap-2 rounded-lg px-2 py-2 text-sm hover:bg-muted"
+                  />
+                }
+              >
+                <CircleQuestionMark size={18} />
+                Ajuda e Suporte
               </SheetClose>
               <SheetFooter>
                 <SheetClose

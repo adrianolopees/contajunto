@@ -1,8 +1,4 @@
-interface LogoProps {
-  size: number;
-}
-
-export default function Logo({ size }: LogoProps) {
+export default function Logo({ size }: { size: number }) {
   const barHeight = Math.round(size * 0.35);
   const radius = barHeight / 2;
 

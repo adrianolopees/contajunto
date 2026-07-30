@@ -84,8 +84,8 @@ export default function TransactionList() {
                 <p
                   className={
                     transaction.type === "INCOME"
-                      ? "font-medium text-green-600"
-                      : "font-medium text-red-500"
+                      ? "font-medium text-income"
+                      : "font-medium text-expense"
                   }
                 >
                   {transaction.type === "INCOME" ? "+" : "-"}{" "}
