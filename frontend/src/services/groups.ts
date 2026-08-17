@@ -1,5 +1,9 @@
 import { api } from "@/lib/api";
-import type { Transaction, TransactionsSummary } from "./transactions";
+import type {
+  CategorySpending,
+  Transaction,
+  TransactionsSummary,
+} from "./transactions";
 
 export interface GroupMember {
   id: string;
@@ -43,10 +47,14 @@ export async function leaveGroup(): Promise<GroupMembership> {
   return res.data.group;
 }
 
+export type GroupTransaction = Transaction & {
+  user: { id: string; name: string };
+};
+
 export async function getGroupTransactions(params?: {
   month?: number;
   year?: number;
-}): Promise<Transaction[]> {
+}): Promise<GroupTransaction[]> {
   const res = await api.get("/groups/transactions", { params });
   return res.data.transactions;
 }
@@ -57,4 +65,27 @@ export async function getGroupTransactionsSummary(params?: {
 }): Promise<TransactionsSummary> {
   const res = await api.get("/groups/transactions/summary", { params });
   return res.data;
+}
+
+export async function getGroupCategorySpending(params?: {
+  month?: number;
+  year?: number;
+}): Promise<CategorySpending[]> {
+  const res = await api.get("/groups/transactions/summary/by-category", {
+    params,
+  });
+  return res.data.categorySpending;
+}
+
+export interface MemberSpending {
+  userId: string;
+  total: number;
+}
+
+export async function getGroupMemberSpending(params?: {
+  month?: number;
+  year?: number;
+}): Promise<MemberSpending[]> {
+  const res = await api.get("/groups/members/spending", { params });
+  return res.data.memberSpending;
 }
