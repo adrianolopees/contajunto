@@ -7,6 +7,8 @@ import {
   leaveGroup,
   getGroupTransactions,
   getGroupTransactionsSummary,
+  getGroupCategorySpending,
+  getGroupMemberSpending,
 } from "../controllers/group.controller.js";
 import authMiddleware from "../middlewares/auth.middleware.js";
 
@@ -22,6 +24,12 @@ router.get(
   authMiddleware,
   getGroupTransactionsSummary,
 );
+router.get(
+  "/transactions/summary/by-category",
+  authMiddleware,
+  getGroupCategorySpending,
+);
+router.get("/members/spending", authMiddleware, getGroupMemberSpending);
 router.delete("/leave", authMiddleware, leaveGroup);
 
 export default router;

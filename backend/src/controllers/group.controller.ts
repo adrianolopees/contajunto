@@ -4,7 +4,7 @@ import z from "zod";
 import prisma from "../lib/prisma.js";
 import { getBusinessMonthYear } from "../lib/date.js";
 
-const MAX_GROUP_MEMBERS = 2;
+const MAX_GROUP_MEMBERS = 5;
 
 const groupSchema = z.object({
   name: z
@@ -230,11 +230,68 @@ export async function getGroupTransactions(req: Request, res: Response) {
     },
     include: {
       category: { select: { id: true, name: true, color: true, icon: true } },
+      user: { select: { id: true, name: true } },
     },
     orderBy: { date: "desc" },
   });
 
   res.status(200).json({ transactions });
+}
+
+export async function getGroupCategorySpending(req: Request, res: Response) {
+  const { month: rawMonth, year: rawYear } = querySchema.parse(req.query);
+
+  const { month: currentMonth, year: currentYear } = getBusinessMonthYear();
+  const month = rawMonth || currentMonth;
+  const year = rawYear || currentYear;
+
+  const memberIds = await getGroupMemberIds(req.user.id);
+
+  if (!memberIds) {
+    res.status(404).json({ message: "User is not part of any group" });
+    return;
+  }
+
+  const spending = await prisma.transaction.groupBy({
+    by: ["categoryId"],
+    where: { userId: { in: memberIds }, month, year, type: "EXPENSE" },
+    _sum: { amount: true },
+  });
+
+  const categorySpending = spending.map((item) => ({
+    categoryId: item.categoryId,
+    total: Number(item._sum.amount ?? 0),
+  }));
+
+  res.status(200).json({ categorySpending });
+}
+
+export async function getGroupMemberSpending(req: Request, res: Response) {
+  const { month: rawMonth, year: rawYear } = querySchema.parse(req.query);
+
+  const { month: currentMonth, year: currentYear } = getBusinessMonthYear();
+  const month = rawMonth || currentMonth;
+  const year = rawYear || currentYear;
+
+  const memberIds = await getGroupMemberIds(req.user.id);
+
+  if (!memberIds) {
+    res.status(404).json({ message: "User is not part of any group" });
+    return;
+  }
+
+  const spending = await prisma.transaction.groupBy({
+    by: ["userId"],
+    where: { userId: { in: memberIds }, month, year, type: "EXPENSE" },
+    _sum: { amount: true },
+  });
+
+  const memberSpending = spending.map((item) => ({
+    userId: item.userId,
+    total: Number(item._sum.amount ?? 0),
+  }));
+
+  res.status(200).json({ memberSpending });
 }
 
 export async function getGroupTransactionsSummary(req: Request, res: Response) {

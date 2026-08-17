@@ -23,6 +23,24 @@ const user3 = {
   password: "senha1234",
 };
 
+const user4 = {
+  name: "Test user4",
+  email: "test4@contajunto.com",
+  password: "senha1234",
+};
+
+const user5 = {
+  name: "Test user5",
+  email: "test5@contajunto.com",
+  password: "senha1234",
+};
+
+const user6 = {
+  name: "Test user6",
+  email: "test6@contajunto.com",
+  password: "senha1234",
+};
+
 beforeEach(async () => {
   await prisma.transaction.deleteMany();
   await prisma.category.deleteMany();
@@ -166,24 +184,28 @@ describe("POST /groups/join", () => {
       .post("/groups")
       .set("Authorization", `Bearer ${accessToken1}`)
       .send(testFamilyGroup);
-    const originalInviteCode = groupRes.body.group.inviteCode;
 
-    const accessToken2 = await createAndAuthenticateUser(user2);
-    await request(app)
-      .post("/groups/join")
-      .set("Authorization", `Bearer ${accessToken2}`)
-      .send({ inviteCode: originalInviteCode });
+    let inviteCode = groupRes.body.group.inviteCode;
 
-    const inviteRes = await request(app)
-      .get("/groups/invite")
-      .set("Authorization", `Bearer ${accessToken1}`);
-    const newInviteCode = inviteRes.body.inviteCode;
+    // preenche o grupo até o limite (user1 + 4 = 5 membros)
+    for (const member of [user2, user3, user4, user5]) {
+      const memberToken = await createAndAuthenticateUser(member);
+      await request(app)
+        .post("/groups/join")
+        .set("Authorization", `Bearer ${memberToken}`)
+        .send({ inviteCode });
 
-    const accessToken3 = await createAndAuthenticateUser(user3);
+      const inviteRes = await request(app)
+        .get("/groups/invite")
+        .set("Authorization", `Bearer ${accessToken1}`);
+      inviteCode = inviteRes.body.inviteCode;
+    }
+
+    const accessToken6 = await createAndAuthenticateUser(user6);
     const res = await request(app)
       .post("/groups/join")
-      .set("Authorization", `Bearer ${accessToken3}`)
-      .send({ inviteCode: newInviteCode });
+      .set("Authorization", `Bearer ${accessToken6}`)
+      .send({ inviteCode });
 
     expect(res.status).toBe(409);
   });
@@ -408,6 +430,122 @@ describe("GET /groups/transactions", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.transactions[0]).toHaveProperty("category");
+  });
+
+  it("should include the owning user in transaction response", async () => {
+    const { accessToken1 } = await createGroupWithTwoMembers();
+
+    await request(app)
+      .post("/transactions")
+      .set("Authorization", `Bearer ${accessToken1}`)
+      .send(validTransaction);
+
+    const res = await request(app)
+      .get("/groups/transactions")
+      .set("Authorization", `Bearer ${accessToken1}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.transactions[0]).toMatchObject({
+      user: { id: expect.any(String), name: expect.any(String) },
+    });
+  });
+});
+
+describe("GET /groups/transactions/summary/by-category", () => {
+  it("should return 401 when no token is provided", async () => {
+    const res = await request(app).get(
+      "/groups/transactions/summary/by-category",
+    );
+
+    expect(res.status).toBe(401);
+  });
+
+  it("should return 404 when user has no group", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .get("/groups/transactions/summary/by-category")
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(res.status).toBe(404);
+  });
+
+  it("should aggregate expense totals by category across members", async () => {
+    const { accessToken1, accessToken2 } = await createGroupWithTwoMembers();
+
+    const categoryRes = await request(app)
+      .post("/categories")
+      .set("Authorization", `Bearer ${accessToken1}`)
+      .send({ name: "Mercado", color: "#fff", icon: "ShoppingCart", type: "EXPENSE" });
+
+    await request(app)
+      .post("/transactions")
+      .set("Authorization", `Bearer ${accessToken1}`)
+      .send({ ...validTransaction, categoryId: categoryRes.body.category.id });
+
+    await request(app)
+      .post("/transactions")
+      .set("Authorization", `Bearer ${accessToken2}`)
+      .send(validTransaction);
+
+    const res = await request(app)
+      .get("/groups/transactions/summary/by-category")
+      .set("Authorization", `Bearer ${accessToken1}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.categorySpending).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          categoryId: categoryRes.body.category.id,
+          total: validTransaction.amount,
+        }),
+      ]),
+    );
+  });
+});
+
+describe("GET /groups/members/spending", () => {
+  it("should return 401 when no token is provided", async () => {
+    const res = await request(app).get("/groups/members/spending");
+
+    expect(res.status).toBe(401);
+  });
+
+  it("should return 404 when user has no group", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .get("/groups/members/spending")
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(res.status).toBe(404);
+  });
+
+  it("should aggregate expense totals per member", async () => {
+    const { accessToken1, accessToken2 } = await createGroupWithTwoMembers();
+
+    await request(app)
+      .post("/transactions")
+      .set("Authorization", `Bearer ${accessToken1}`)
+      .send(validTransaction);
+
+    await request(app)
+      .post("/transactions")
+      .set("Authorization", `Bearer ${accessToken2}`)
+      .send({ ...validTransaction, amount: 30 });
+
+    const res = await request(app)
+      .get("/groups/members/spending")
+      .set("Authorization", `Bearer ${accessToken1}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.memberSpending).toHaveLength(2);
+    expect(res.body.memberSpending).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ total: validTransaction.amount }),
+        expect.objectContaining({ total: 30 }),
+      ]),
+    );
   });
 });
 
