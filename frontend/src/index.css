@@ -22,6 +22,7 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  --color-summary-foreground: var(--summary-foreground);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -61,6 +62,9 @@
   --expense: oklch(0.55 0.18 25);
   --radius: 0.625rem;
   --nav-shadow: 0 10px 30px rgba(20, 10, 40, 0.14);
+  /* fixo nos dois temas: usado só nos cards de saldo (bg-primary), que já
+     têm acentos brancos fixos (bg-white/10) independentes do tema */
+  --summary-foreground: oklch(0.97 0.01 280);
 }
 
 .dark {

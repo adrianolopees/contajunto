@@ -137,7 +137,7 @@ export function GroupDashboard() {
         </CardContent>
       </Card>
 
-      <Card className="border-none bg-primary text-primary-foreground">
+      <Card className="border-none bg-primary text-summary-foreground">
         <CardContent className="space-y-3">
           <div>
             <p className="text-sm opacity-80">Saldo do mês</p>
@@ -218,10 +218,10 @@ export function GroupDashboard() {
                 />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">
-                    {transaction.category?.name ?? "Sem categoria"} ·{" "}
+                    {transaction.category?.name ?? "Sem categoria"}{" "}
                   </p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {transaction.description || "Sem descrição"}
+                    {transaction.description || "Sem descrição"} ·{" "}
                     {formatRelativeDay(transaction.date)} ·{" "}
                     {transaction.user.name.split(" ")[0]}
                   </p>

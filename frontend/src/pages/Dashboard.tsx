@@ -157,11 +157,12 @@ export default function Dashboard() {
 
       <MonthPicker month={month} year={year} onPrev={prev} onNext={next} />
 
-      <Card className="border-none bg-primary text-primary-foreground">
+      <Card className="border-none bg-primary text-summary-foreground">
         <CardContent className="space-y-3">
           <div>
             <p className="text-sm opacity-80">
-              Saldo do mês {view === "family" ? "— Família" : ""}
+              Saldo do mês{" "}
+              {view === "family" ? "— Família" : "— Minhas finanças"}
             </p>
             <p className="text-3xl font-bold">
               {formatCurrency(summary?.balance ?? 0)}
