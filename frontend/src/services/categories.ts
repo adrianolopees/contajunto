@@ -6,10 +6,15 @@ export interface Category {
   name: string;
   color: string;
   icon: string;
+  monthlyLimit: string | null;
 }
 
+type CategoryInput = Omit<Category, "id" | "monthlyLimit"> & {
+  monthlyLimit?: number | null;
+};
+
 export async function createCategory(
-  data: Omit<Category, "id">,
+  data: CategoryInput,
 ): Promise<Category> {
   const res = await api.post("/categories", data);
   return res.data.category;
@@ -22,7 +27,7 @@ export async function getCategories(): Promise<Category[]> {
 
 export async function updateCategory(
   id: string,
-  data: Partial<Omit<Category, "id">>,
+  data: Partial<CategoryInput>,
 ): Promise<Category> {
   const res = await api.patch(`/categories/${id}`, data);
   return res.data.category;

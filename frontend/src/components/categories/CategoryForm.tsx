@@ -62,6 +62,17 @@ const CategoryFormSchema = z.object({
   name: z.string().min(2, "Minimo 2 caracateres"),
   color: z.string().min(1, "Precisa existir a cor"),
   icon: z.string().min(1, "Selecione um ícone"),
+  monthlyLimit: z
+    .string()
+    .optional()
+    .refine(
+      (v) => !v || !isNaN(parseFloat(v.replace(",", "."))),
+      "Limite inválido",
+    )
+    .refine(
+      (v) => !v || parseFloat(v.replace(",", ".")) > 0,
+      "Deve ser maior que zero",
+    ),
 });
 
 const EditCategoryFormSchema = CategoryFormSchema.partial({ type: true });
@@ -94,6 +105,7 @@ export default function CategoryForm({
       name: category?.name ?? "",
       color: category?.color ?? "#6b7280",
       icon: category?.icon ?? "",
+      monthlyLimit: category?.monthlyLimit ?? "",
     });
   }, [category, form]);
 
@@ -101,11 +113,16 @@ export default function CategoryForm({
 
   async function onSubmit(data: z.infer<typeof EditCategoryFormSchema>) {
     try {
+      const monthlyLimit = data.monthlyLimit
+        ? parseFloat(data.monthlyLimit.replace(",", "."))
+        : null;
+
       if (!category) {
-        await createCategory(CategoryFormSchema.parse(data));
+        const parsed = CategoryFormSchema.parse(data);
+        await createCategory({ ...parsed, monthlyLimit });
         toast.success("Categoria criada com sucesso!");
       } else {
-        await updateCategory(category.id, data);
+        await updateCategory(category.id, { ...data, monthlyLimit });
         toast.success("Categoria atualizada com sucesso!");
       }
       onOpenChange(false);
@@ -169,6 +186,22 @@ export default function CategoryForm({
                 {selectedColor}
               </span>
             </div>
+          </div>
+
+          <div>
+            <Label htmlFor="monthlyLimit">Limite mensal (opcional)</Label>
+            <Input
+              {...form.register("monthlyLimit")}
+              id="monthlyLimit"
+              type="text"
+              inputMode="decimal"
+              placeholder="0,00"
+            />
+            {form.formState.errors.monthlyLimit?.message && (
+              <p className="text-sm text-destructive">
+                {form.formState.errors.monthlyLimit.message}
+              </p>
+            )}
           </div>
 
           <div>
