@@ -145,6 +145,41 @@ describe("POST /categories", () => {
     expect(res.status).toBe(409);
   });
 
+  it("should return 201 and accept an optional monthlyLimit", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .post("/categories")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ name: "Mercado", color: "green", icon: "cart", monthlyLimit: 500 });
+
+    expect(res.status).toBe(201);
+    expect(res.body.category.monthlyLimit).toBe("500");
+  });
+
+  it("should return 201 with null monthlyLimit when omitted", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .post("/categories")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ name: "Lazer", color: "green", icon: "star" });
+
+    expect(res.status).toBe(201);
+    expect(res.body.category.monthlyLimit).toBeNull();
+  });
+
+  it("should return 400 when monthlyLimit is negative", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .post("/categories")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ name: "Lazer", color: "green", icon: "star", monthlyLimit: -10 });
+
+    expect(res.status).toBe(400);
+  });
+
   it("should allow two users to have a category with the same name", async () => {
     const token1 = await createAndAuthenticateUser();
     const token2 = await createAndAuthenticateUser({
@@ -257,6 +292,40 @@ describe("PATCH /categories", () => {
       .send({ name: "Tentativa" });
 
     expect(res.status).toBe(404);
+  });
+
+  it("should update monthlyLimit", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const created = await request(app)
+      .post("/categories")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ name: "Mercado", color: "green", icon: "cart" });
+
+    const res = await request(app)
+      .patch(`/categories/${created.body.category.id}`)
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ monthlyLimit: 300 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.category.monthlyLimit).toBe("300");
+  });
+
+  it("should clear monthlyLimit when sent as null", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const created = await request(app)
+      .post("/categories")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ name: "Mercado", color: "green", icon: "cart", monthlyLimit: 300 });
+
+    const res = await request(app)
+      .patch(`/categories/${created.body.category.id}`)
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ monthlyLimit: null });
+
+    expect(res.status).toBe(200);
+    expect(res.body.category.monthlyLimit).toBeNull();
   });
 });
 

@@ -64,6 +64,7 @@ model Category {
   name          String
   color         String
   icon          String
+  monthlyLimit  Decimal?      @db.Decimal(10, 2)
   transactions  Transaction[]
   userId        String
   user          User @relation(fields: [userId], references: [id])

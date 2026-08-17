@@ -7,12 +7,15 @@ const categorySchema = z.object({
   name: z.string().min(2),
   color: z.string(),
   icon: z.string(),
+  monthlyLimit: z.number().positive().nullable().optional(),
 });
 
 const updateCategorySchema = categorySchema.partial();
 
 export async function createCategory(req: Request, res: Response) {
-  const { type, name, color, icon } = categorySchema.parse(req.body);
+  const { type, name, color, icon, monthlyLimit } = categorySchema.parse(
+    req.body,
+  );
   const userId = req.user.id;
 
   const existingCategory = await prisma.category.findFirst({
@@ -25,7 +28,7 @@ export async function createCategory(req: Request, res: Response) {
   }
 
   const category = await prisma.category.create({
-    data: { userId, type, name, color, icon },
+    data: { userId, type, name, color, icon, monthlyLimit },
     omit: { userId: true },
   });
 
@@ -44,7 +47,9 @@ export async function getCategories(req: Request, res: Response) {
 
 export async function updateCategory(req: Request, res: Response) {
   const categoryId = z.uuid().parse(req.params.id);
-  const { name, color, icon } = updateCategorySchema.parse(req.body);
+  const { name, color, icon, monthlyLimit } = updateCategorySchema.parse(
+    req.body,
+  );
 
   const category = await prisma.category.findFirst({
     where: { id: categoryId, userId: req.user.id },
@@ -56,7 +61,7 @@ export async function updateCategory(req: Request, res: Response) {
 
   const updatedCategory = await prisma.category.update({
     where: { id: categoryId },
-    data: { name, color, icon },
+    data: { name, color, icon, monthlyLimit },
     omit: { userId: true },
   });
 
