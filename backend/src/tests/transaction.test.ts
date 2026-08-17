@@ -64,6 +64,18 @@ describe("POST /transactions", () => {
       },
     });
   });
+
+  it("should return 201 and create transaction without a description", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .post("/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ amount: 49.9, type: "EXPENSE" });
+
+    expect(res.status).toBe(201);
+    expect(res.body.transaction.description).toBe("");
+  });
 });
 
 describe("GET /transactions", () => {

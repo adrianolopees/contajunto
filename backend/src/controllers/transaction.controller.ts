@@ -6,7 +6,7 @@ import { getBusinessMonthYear } from "../lib/date.js";
 const transactionSchema = z.object({
   amount: z.number().positive().multipleOf(0.01),
   type: z.enum(["INCOME", "EXPENSE"]),
-  description: z.string().min(1).max(255),
+  description: z.string().max(255).optional(),
   categoryId: z.uuid().optional(),
 });
 
@@ -44,7 +44,7 @@ export async function createTransaction(req: Request, res: Response) {
       userId,
       amount,
       type,
-      description,
+      description: description ?? "",
       categoryId,
       month,
       year,
