@@ -6,10 +6,10 @@ const defaultCategories: Prisma.DefaultCategoryCreateManyInput[] = [
   // Despesas
   { type: "EXPENSE", name: "Alimentação", color: "#f97316", icon: "Utensils" },
   { type: "EXPENSE", name: "Moradia", color: "#3b82f6", icon: "Home" },
-  { type: "EXPENSE", name: "Transporte", color: "#0ea5e9", icon: "Car" },
-  { type: "EXPENSE", name: "Saúde", color: "#ef4444", icon: "HeartPulse" },
+  { type: "EXPENSE", name: "Transporte", color: "#14b8a6", icon: "Car" },
+  { type: "EXPENSE", name: "Saúde", color: "#22c55e", icon: "HeartPulse" },
   { type: "EXPENSE", name: "Educação", color: "#8b5cf6", icon: "BookOpen" },
-  { type: "EXPENSE", name: "Lazer", color: "#eab308", icon: "Gamepad2" },
+  { type: "EXPENSE", name: "Lazer", color: "#ec4899", icon: "Gamepad2" },
   { type: "EXPENSE", name: "Vestuário", color: "#ec4899", icon: "Shirt" },
   { type: "EXPENSE", name: "Assinaturas", color: "#7c3aed", icon: "RefreshCw" },
   { type: "EXPENSE", name: "Beleza", color: "#f43f5e", icon: "Sparkles" },
