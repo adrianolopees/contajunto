@@ -1,14 +1,16 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useAuth } from "./hooks/useAuth";
-import Login from "./pages/auth/Login";
-import Register from "./pages/auth/Register";
-import AppShell from "./components/layout/AppShell";
+import { useAuth } from "@/hooks/useAuth";
+import Login from "@/pages/auth/Login";
+import Register from "@/pages/auth/Register";
+import AppShell from "@/components/layout/AppShell";
 import type React from "react";
-import Dashboard from "./pages/Dashboard";
-import { Profile } from "./pages/profile/Profile";
-import { FamilyGroupPage } from "./pages/group/FamilyGroupPage";
-import CategoryList from "./pages/categories/CategoryList";
-import TransactionList from "./pages/transactions/TransactionList";
+import Dashboard from "@/pages/Dashboard";
+import { Profile } from "@/pages/profile/Profile";
+import { FamilyGroupPage } from "@/pages/group/FamilyGroupPage";
+import TransactionForm from "@/pages/transactions/TransactionForm";
+import CategoryList from "@/pages/categories/CategoryList";
+import CategoryDetail from "@/pages/categories/CategoryDetail";
+import TransactionList from "@/pages/transactions/TransactionList";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { accessToken, isLoading } = useAuth();
@@ -55,7 +57,10 @@ export default function App() {
         >
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/transactions" element={<TransactionList />} />
+          <Route path="/transactions/new" element={<TransactionForm />} />
+          <Route path="/transactions/:id/edit" element={<TransactionForm />} />
           <Route path="/categories" element={<CategoryList />} />
+          <Route path="/categories/:id" element={<CategoryDetail />} />
           <Route path="/familyGroup" element={<FamilyGroupPage />} />
           <Route path="/me" element={<Profile />} />
         </Route>

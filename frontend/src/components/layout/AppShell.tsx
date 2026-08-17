@@ -1,7 +1,7 @@
 import { Outlet, NavLink, Link } from "react-router-dom";
 import {
   LayoutDashboard,
-  ArrowLeftRight,
+  Plus,
   Tags,
   Users,
   User,
@@ -145,12 +145,12 @@ export default function AppShell() {
               }`}
             >
               <LayoutDashboard size={20} />
-              <span className="text-xs">Dashboard</span>
+              <span className="text-xs">Início</span>
             </div>
           )}
         </NavLink>
 
-        <NavLink to="/transactions" className="flex flex-col items-center">
+        <NavLink to="/transactions/new" className="flex flex-col items-center">
           {({ isActive }) => (
             <div
               className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-[16px] ${
@@ -159,8 +159,8 @@ export default function AppShell() {
                   : "text-muted-foreground"
               }`}
             >
-              <ArrowLeftRight size={20} />
-              <span className="text-xs">Transações</span>
+              <Plus size={20} />
+              <span className="text-xs">Lançar</span>
             </div>
           )}
         </NavLink>
