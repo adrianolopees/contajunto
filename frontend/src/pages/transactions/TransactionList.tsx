@@ -13,7 +13,6 @@ export default function TransactionList() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // useCallback memoriza a função — só recria quando month/year mudam
   const loadTransactions = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -26,7 +25,6 @@ export default function TransactionList() {
     }
   }, [month, year]);
 
-  // transações recarregam quando loadTransactions mudar (ou seja, quando mês/ano mudam)
   useEffect(() => {
     loadTransactions();
   }, [loadTransactions]);
@@ -71,7 +69,6 @@ export default function TransactionList() {
         </ul>
       )}
 
-      {/* FAB — fixed acima da bottom nav (h-16 = 64px) */}
       <Link
         to="/transactions/new"
         aria-label="Nova transação"

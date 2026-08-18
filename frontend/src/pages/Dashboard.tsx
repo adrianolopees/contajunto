@@ -164,20 +164,20 @@ export default function Dashboard() {
               Saldo do mês{" "}
               {view === "family" ? "— Família" : "— Minhas finanças"}
             </p>
-            <p className="text-3xl font-bold">
+            <p className="text-3xl font-extrabold">
               {formatCurrency(summary?.balance ?? 0)}
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-lg bg-white/10 p-2">
               <p className="text-xs opacity-80">Entradas</p>
-              <p className="font-medium">
+              <p className="font-extrabold ">
                 +{formatCurrency(summary?.income ?? 0)}
               </p>
             </div>
             <div className="rounded-lg bg-white/10 p-2">
               <p className="text-xs opacity-80">Saídas</p>
-              <p className="font-medium">
+              <p className="font-extrabold">
                 -{formatCurrency(summary?.expense ?? 0)}
               </p>
             </div>
@@ -208,7 +208,7 @@ export default function Dashboard() {
       )}
 
       <div>
-        <h2 className="mb-3 font-medium">Gastos por categoria</h2>
+        <h2 className="mb-3 font-extrabold">Gastos por categoria</h2>
         {isLoading ? (
           <p className="py-4 text-center text-muted-foreground">
             Carregando...
@@ -227,7 +227,7 @@ export default function Dashboard() {
       </div>
 
       <div>
-        <h2 className="mb-3 font-medium">Últimos lançamentos</h2>
+        <h2 className="mb-3 font-extrabold">Últimos lançamentos</h2>
         {isLoading ? (
           <p className="py-4 text-center text-muted-foreground">
             Carregando...
@@ -235,12 +235,12 @@ export default function Dashboard() {
         ) : recentTransactions.length === 0 ? (
           <EmptyState message="Nenhuma transação neste mês." />
         ) : (
-          <ul className="space-y-2">
+          <ul>
             {recentTransactions.map((transaction) => (
               <li key={transaction.id}>
                 <Link
                   to={`/transactions/${transaction.id}/edit`}
-                  className="flex items-center gap-3 rounded-lg border p-3"
+                  className="flex items-center gap-3 py-3"
                 >
                   <CategoryBadge
                     icon={transaction.category?.icon ?? "Circle"}

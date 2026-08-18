@@ -164,17 +164,17 @@ export default function TransactionForm() {
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         {/* Toggle Gasto / Ganho */}
-        <div className="grid grid-cols-2 gap-2 rounded-xl border p-1">
+        <div className="grid grid-cols-2 gap-2 rounded-xl border p-0.5 bg-muted">
           <button
             type="button"
             onClick={() =>
               form.setValue("type", "EXPENSE", { shouldValidate: true })
             }
             className={cn(
-              "rounded-lg py-2 text-sm font-medium transition-colors",
+              "rounded-lg py-2 text-sm font-extrabold transition-colors",
               type === "EXPENSE"
                 ? "bg-expense text-white"
-                : "text-muted-foreground hover:bg-muted",
+                : "text-muted-foreground",
             )}
           >
             Gasto
@@ -185,7 +185,7 @@ export default function TransactionForm() {
               form.setValue("type", "INCOME", { shouldValidate: true })
             }
             className={cn(
-              "rounded-lg py-2 text-sm font-medium transition-colors",
+              "rounded-lg py-2 text-sm font-extrabold transition-colors",
               type === "INCOME"
                 ? "bg-income text-white"
                 : "text-muted-foreground hover:bg-muted",
@@ -196,18 +196,29 @@ export default function TransactionForm() {
         </div>
 
         {/* Valor grande + chips de valor rápido */}
-        <div className="space-y-2 text-center">
+        <div className="text-center">
           <p className="text-sm font-medium text-muted-foreground">Valor</p>
-          <Input
-            {...form.register("amount")}
-            type="text"
-            inputMode="decimal"
-            placeholder="0,00"
-            className={cn(
-              "border-none bg-transparent text-center text-[42px] font-bold shadow-none focus-visible:ring-0",
-              type === "EXPENSE" ? "text-expense" : "text-income",
-            )}
-          />
+          <div className="flex items-center justify-center gap-1">
+            <span
+              className={cn(
+                "text-[42px] font-bold",
+                type === "EXPENSE" ? "text-expense" : "text-income",
+              )}
+            >
+              R$
+            </span>
+            <Input
+              {...form.register("amount")}
+              type="text"
+              inputMode="decimal"
+              placeholder="0,00"
+              className={cn(
+                "border-none bg-transparent w-auto py-0 px-2 text-[42px] font-bold shadow-none focus-visible:ring-0",
+                type === "EXPENSE" ? "text-expense" : "text-income",
+              )}
+              size={Math.max(amount?.length ?? 0, 4)}
+            />
+          </div>
           {form.formState.errors.amount?.message && (
             <p className="text-center text-sm text-destructive">
               {form.formState.errors.amount.message}
@@ -222,12 +233,16 @@ export default function TransactionForm() {
                   key={value}
                   type="button"
                   onClick={() =>
-                    form.setValue("amount", String(value), {
-                      shouldValidate: true,
-                    })
+                    form.setValue(
+                      "amount",
+                      value.toFixed(2).replace(".", ","),
+                      {
+                        shouldValidate: true,
+                      },
+                    )
                   }
                   className={cn(
-                    "rounded-full border px-3 py-1 text-xs transition-colors",
+                    "rounded-lg border px-4 py-2 mt-5 bg-muted text-xs transition-colors",
                     isSelected
                       ? type === "EXPENSE"
                         ? "border-expense bg-expense text-white"
@@ -297,7 +312,7 @@ export default function TransactionForm() {
             {...form.register("description")}
             id="description"
             type="text"
-            placeholder="Descrição"
+            placeholder="Adicionar uma nota (opcional)"
             aria-label="Nota"
           />
           {form.formState.errors.description?.message && (
