@@ -137,7 +137,7 @@ export function GroupDashboard() {
         </CardContent>
       </Card>
 
-      <Card className="border-none bg-primary text-summary-foreground">
+      <Card className="border-none bg-primary text-primary-foreground">
         <CardContent className="space-y-3">
           <div>
             <p className="text-sm opacity-80">Saldo do mês</p>

@@ -22,7 +22,6 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
-  --color-summary-foreground: var(--summary-foreground);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -62,9 +61,6 @@
   --expense: oklch(0.55 0.18 25);
   --radius: 0.625rem;
   --nav-shadow: 0 10px 30px rgba(20, 10, 40, 0.14);
-  /* fixo nos dois temas: usado só nos cards de saldo (bg-primary), que já
-     têm acentos brancos fixos (bg-white/10) independentes do tema */
-  --summary-foreground: oklch(0.97 0.01 280);
 }
 
 .dark {
@@ -75,7 +71,7 @@
   --popover: oklch(0.25 0.03 280);
   --popover-foreground: oklch(0.97 0.01 280);
   --primary: oklch(0.66 0.19 292);
-  --primary-foreground: oklch(0.16 0.02 280);
+  --primary-foreground: oklch(0.97 0.01 280);
   --secondary: oklch(0.3 0.03 280);
   --secondary-foreground: oklch(0.97 0.01 280);
   --muted: oklch(0.3 0.03 280);
@@ -89,8 +85,6 @@
   --income: oklch(0.7 0.17 150);
   --expense: oklch(0.68 0.18 25);
   --nav-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
-
-  /* --chart-* : não mexer agora */
 }
 
 @layer base {

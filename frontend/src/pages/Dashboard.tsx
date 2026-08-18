@@ -157,7 +157,7 @@ export default function Dashboard() {
 
       <MonthPicker month={month} year={year} onPrev={prev} onNext={next} />
 
-      <Card className="border-none bg-primary text-summary-foreground">
+      <Card className="border-none bg-primary text-primary-foreground">
         <CardContent className="space-y-3">
           <div>
             <p className="text-sm opacity-80">
