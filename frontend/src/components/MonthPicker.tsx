@@ -15,7 +15,7 @@ export default function MonthPicker({
   onNext,
 }: MonthPickerProps) {
   return (
-    <div className=" flex items-center justify-between py-2">
+    <div className="mb-4 flex items-center justify-between py-2">
       <Button
         variant="ghost"
         size="icon"

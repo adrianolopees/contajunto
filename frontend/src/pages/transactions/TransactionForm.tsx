@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod";
 import toast from "react-hot-toast";
 import axios from "axios";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,6 +53,8 @@ export default function TransactionForm() {
   const [transaction, setTransaction] = useState<Transaction | undefined>();
   const [categories, setCategories] = useState<Category[]>([]);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [categorySearch, setCategorySearch] = useState("");
+  const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
 
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionFormSchema),
@@ -69,6 +71,45 @@ export default function TransactionForm() {
   const amount = useWatch({ control: form.control, name: "amount" });
 
   const categoriesForType = categories.filter((c) => c.type === type);
+  const selectedCategory = categoriesForType.find((c) => c.id === categoryId);
+
+  const groupedCategories = useMemo(() => {
+    const map = new Map<
+      string,
+      { group: Category["group"]; items: Category[] }
+    >();
+    for (const category of categoriesForType) {
+      const entry = map.get(category.group.id);
+      if (entry) {
+        entry.items.push(category);
+      } else {
+        map.set(category.group.id, {
+          group: category.group,
+          items: [category],
+        });
+      }
+    }
+    return Array.from(map.values());
+  }, [categoriesForType]);
+
+  const searchTerm = categorySearch.trim().toLowerCase();
+  const filteredGroups = useMemo(() => {
+    if (!searchTerm) return groupedCategories;
+    return groupedCategories
+      .map(({ group, items }) => ({
+        group,
+        items: items.filter((item) =>
+          item.name.toLowerCase().includes(searchTerm),
+        ),
+      }))
+      .filter(({ items }) => items.length > 0);
+  }, [groupedCategories, searchTerm]);
+
+  function selectCategory(id: string) {
+    form.setValue("categoryId", id, { shouldValidate: true });
+    setExpandedGroupId(null);
+    setCategorySearch("");
+  }
 
   // categorias só precisam ser carregadas uma vez
   useEffect(() => {
@@ -89,6 +130,12 @@ export default function TransactionForm() {
       form.setValue("categoryId", NO_CATEGORY);
     }
   }, [type, categories, categoryId, form]);
+
+  // trocar Gasto/Ganho invalida a busca e o grupo aberto do tipo anterior
+  useEffect(() => {
+    setCategorySearch("");
+    setExpandedGroupId(null);
+  }, [type]);
 
   // busca a transação e já popula o form quando os dados chegam
   useEffect(() => {
@@ -164,7 +211,7 @@ export default function TransactionForm() {
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         {/* Toggle Gasto / Ganho */}
-        <div className="grid grid-cols-2 gap-2 rounded-xl border p-0.5 bg-muted">
+        <div className="grid grid-cols-2 gap-2 rounded-xl border p-0.5">
           <button
             type="button"
             onClick={() =>
@@ -242,7 +289,7 @@ export default function TransactionForm() {
                     )
                   }
                   className={cn(
-                    "rounded-lg border px-4 py-2 mt-5 bg-muted text-xs transition-colors",
+                    "rounded-lg border px-2 py-2 mt-5 bg-muted text-xs transition-colors",
                     isSelected
                       ? type === "EXPENSE"
                         ? "border-expense bg-expense text-white"
@@ -257,53 +304,131 @@ export default function TransactionForm() {
           </div>
         </div>
 
-        {/* Grid de categorias */}
+        {/* Categoria: busca + grupos expansíveis */}
         <div>
           <p className="mb-2 text-sm font-medium text-muted-foreground">
             Categoria
           </p>
-          <div className="grid grid-cols-3 gap-2">
-            <button
-              type="button"
-              onClick={() =>
-                form.setValue("categoryId", NO_CATEGORY, {
-                  shouldValidate: true,
-                })
-              }
-              className={cn(
-                "flex flex-col items-center gap-1 rounded-lg border p-2 text-xs transition-colors",
-                categoryId === NO_CATEGORY
-                  ? "border-primary bg-primary/10"
-                  : "hover:bg-muted",
-              )}
-            >
-              <span className="size-4 rounded-full bg-muted-foreground/30" />
-              Sem categoria
-            </button>
-            {categoriesForType.map((category) => (
+
+          {selectedCategory && (
+            <div className="mb-2 flex items-center gap-2 rounded-lg border border-primary bg-primary/10 p-2 text-sm">
+              <CategoryBadge
+                icon={selectedCategory.icon}
+                color={selectedCategory.color}
+                size={24}
+              />
+              <span className="min-w-0 flex-1 truncate font-medium">
+                {selectedCategory.name}
+              </span>
               <button
-                key={category.id}
                 type="button"
                 onClick={() =>
-                  form.setValue("categoryId", category.id, {
+                  form.setValue("categoryId", NO_CATEGORY, {
                     shouldValidate: true,
                   })
                 }
+                className="text-xs text-muted-foreground underline"
+              >
+                trocar
+              </button>
+            </div>
+          )}
+
+          <Input
+            value={categorySearch}
+            onChange={(e) => setCategorySearch(e.target.value)}
+            type="text"
+            placeholder="Buscar categoria"
+            aria-label="Buscar categoria"
+          />
+
+          <div className="mt-2 space-y-2">
+            {!selectedCategory && (
+              <button
+                type="button"
+                onClick={() => selectCategory(NO_CATEGORY)}
                 className={cn(
-                  "flex flex-col items-center gap-1 rounded-lg border p-2 text-xs transition-colors",
-                  categoryId === category.id
+                  "flex w-full items-center gap-3 rounded-lg border p-2 text-sm transition-colors",
+                  categoryId === NO_CATEGORY
                     ? "border-primary bg-primary/10"
                     : "hover:bg-muted",
                 )}
               >
-                <CategoryBadge
-                  icon={category.icon}
-                  color={category.color}
-                  size={28}
-                />
-                {category.name}
+                <span className="size-6 rounded-full bg-muted-foreground/30" />
+                Sem categoria
               </button>
-            ))}
+            )}
+
+            {filteredGroups.length === 0 ? (
+              <p className="py-4 text-center text-sm text-muted-foreground">
+                Nenhuma categoria encontrada.
+              </p>
+            ) : (
+              filteredGroups.map(({ group, items }) => {
+                const isExpanded =
+                  Boolean(searchTerm) || expandedGroupId === group.id;
+                return (
+                  <div
+                    key={group.id}
+                    className="overflow-hidden rounded-lg border"
+                  >
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedGroupId(
+                          expandedGroupId === group.id ? null : group.id,
+                        )
+                      }
+                      className="flex w-full items-center gap-3 p-2 text-left text-sm"
+                    >
+                      <CategoryBadge
+                        icon={group.icon}
+                        color={group.color}
+                        size={28}
+                      />
+                      <span className="min-w-0 flex-1 truncate font-medium">
+                        {group.name}
+                      </span>
+                      {isExpanded ? (
+                        <ChevronUp
+                          size={16}
+                          className="text-muted-foreground"
+                        />
+                      ) : (
+                        <ChevronDown
+                          size={16}
+                          className="text-muted-foreground"
+                        />
+                      )}
+                    </button>
+                    {isExpanded && (
+                      <div className="grid grid-cols-3 gap-2 border-t p-2">
+                        {items.map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => selectCategory(item.id)}
+                            className={cn(
+                              "flex flex-col items-center gap-1 rounded-lg border p-2 text-xs transition-colors",
+                              categoryId === item.id
+                                ? "border-primary bg-primary/10"
+                                : "hover:bg-muted",
+                            )}
+                          >
+                            <CategoryBadge
+                              icon={item.icon}
+                              color={item.color}
+                              size={28}
+                            />
+                            {item.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
 
@@ -312,7 +437,7 @@ export default function TransactionForm() {
             {...form.register("description")}
             id="description"
             type="text"
-            placeholder="Adicionar uma nota (opcional)"
+            placeholder="Descriçao (opcional)"
             aria-label="Nota"
           />
           {form.formState.errors.description?.message && (
