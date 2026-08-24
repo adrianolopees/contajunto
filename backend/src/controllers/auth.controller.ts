@@ -69,6 +69,7 @@ export async function register(req: Request, res: Response) {
         name: cat.name,
         color: cat.color,
         icon: cat.icon,
+        groupId: cat.groupId,
         userId: newUser.id,
       })),
     });

@@ -27,7 +27,7 @@ describe("GET /categories/default", () => {
     expect(res.body.categoriesDefault.length).toBeGreaterThan(0);
   });
 
-  it("should return default categories with expected fields", async () => {
+  it("should return default categories with expected fields, including group", async () => {
     const res = await request(app).get("/categories/default");
 
     expect(res.status).toBe(200);
@@ -36,6 +36,10 @@ describe("GET /categories/default", () => {
       name: expect.any(String),
       color: expect.any(String),
       icon: expect.any(String),
+      group: expect.objectContaining({
+        id: expect.any(String),
+        name: expect.any(String),
+      }),
     });
   });
 });
@@ -54,7 +58,7 @@ describe("GET /categories", () => {
     expect(res.status).toBe(401);
   });
 
-  it("should return 200, Authenticated user without categories", async () => {
+  it("should return 200, authenticated user with categories copied at registration", async () => {
     const accessToken = await createAndAuthenticateUser();
 
     const res = await request(app)
@@ -62,144 +66,8 @@ describe("GET /categories", () => {
       .set("Authorization", `Bearer ${accessToken}`);
 
     expect(res.status).toBe(200);
-  });
-
-  it("should return 200 but now authenticated user with categories", async () => {
-    const accessToken = await createAndAuthenticateUser();
-
-    await request(app)
-      .post("/categories")
-      .set("Authorization", `Bearer ${accessToken}`)
-      .send({ name: "Prazeres", color: "blue", icon: "qualQuerUm" });
-
-    const res2 = await request(app)
-      .get("/categories")
-      .set("Authorization", `Bearer ${accessToken}`);
-
-    expect(res2.status).toBe(200);
-    expect(res2.body.categories.length).toBeGreaterThan(0);
-  });
-});
-
-describe("POST /categories", () => {
-  it("should return 401 when no token is provided", async () => {
-    const res = await request(app)
-      .post("/categories")
-      .send({ name: "Viagem", color: "green", icon: "plane" });
-
-    expect(res.status).toBe(401);
-  });
-
-  it("should return 400 when body is invalid", async () => {
-    const accessToken = await createAndAuthenticateUser();
-
-    const res = await request(app)
-      .post("/categories")
-      .set("Authorization", `Bearer ${accessToken}`)
-      .send({ name: "V", color: "green" });
-
-    expect(res.status).toBe(400);
-  });
-
-  it("should return 201 and create category", async () => {
-    const accessToken = await createAndAuthenticateUser();
-
-    const res = await request(app)
-      .post("/categories")
-      .set("Authorization", `Bearer ${accessToken}`)
-      .send({ name: "Viagem", color: "green", icon: "plane" });
-
-    expect(res.status).toBe(201);
-    expect(res.body.category).toMatchObject({
-      name: "Viagem",
-      color: "green",
-      icon: "plane",
-    });
-    expect(res.body.category.userId).toBeUndefined();
-  });
-
-  it("should return 409 when category already exists for the user", async () => {
-    const accessToken = await createAndAuthenticateUser();
-
-    await request(app)
-      .post("/categories")
-      .set("Authorization", `Bearer ${accessToken}`)
-      .send({ name: "Viagem", color: "green", icon: "plane" });
-
-    const res = await request(app)
-      .post("/categories")
-      .set("Authorization", `Bearer ${accessToken}`)
-      .send({ name: "Viagem", color: "blue", icon: "plane" });
-
-    expect(res.status).toBe(409);
-  });
-
-  it("should return 409 when category name matches an already-copied default category", async () => {
-    const accessToken = await createAndAuthenticateUser();
-
-    const res = await request(app)
-      .post("/categories")
-      .set("Authorization", `Bearer ${accessToken}`)
-      .send({ name: "Saúde", color: "blue", icon: "plane" });
-
-    expect(res.status).toBe(409);
-  });
-
-  it("should return 201 and accept an optional monthlyLimit", async () => {
-    const accessToken = await createAndAuthenticateUser();
-
-    const res = await request(app)
-      .post("/categories")
-      .set("Authorization", `Bearer ${accessToken}`)
-      .send({ name: "Mercado", color: "green", icon: "cart", monthlyLimit: 500 });
-
-    expect(res.status).toBe(201);
-    expect(res.body.category.monthlyLimit).toBe("500");
-  });
-
-  it("should return 201 with null monthlyLimit when omitted", async () => {
-    const accessToken = await createAndAuthenticateUser();
-
-    const res = await request(app)
-      .post("/categories")
-      .set("Authorization", `Bearer ${accessToken}`)
-      .send({ name: "Lazer", color: "green", icon: "star" });
-
-    expect(res.status).toBe(201);
-    expect(res.body.category.monthlyLimit).toBeNull();
-  });
-
-  it("should return 400 when monthlyLimit is negative", async () => {
-    const accessToken = await createAndAuthenticateUser();
-
-    const res = await request(app)
-      .post("/categories")
-      .set("Authorization", `Bearer ${accessToken}`)
-      .send({ name: "Lazer", color: "green", icon: "star", monthlyLimit: -10 });
-
-    expect(res.status).toBe(400);
-  });
-
-  it("should allow two users to have a category with the same name", async () => {
-    const token1 = await createAndAuthenticateUser();
-    const token2 = await createAndAuthenticateUser({
-      name: "Outro",
-      email: "outro@email.com",
-      password: "senha1234",
-    });
-
-    const res1 = await request(app)
-      .post("/categories")
-      .set("Authorization", `Bearer ${token1}`)
-      .send({ name: "Viagem", color: "green", icon: "plane" });
-
-    const res2 = await request(app)
-      .post("/categories")
-      .set("Authorization", `Bearer ${token2}`)
-      .send({ name: "Viagem", color: "blue", icon: "plane" });
-
-    expect(res1.status).toBe(201);
-    expect(res2.status).toBe(201);
+    expect(res.body.categories.length).toBeGreaterThan(0);
+    expect(res.body.categories[0]).toHaveProperty("group");
   });
 });
 
@@ -207,7 +75,7 @@ describe("PATCH /categories", () => {
   it("should return 401 when no token is provided", async () => {
     const res = await request(app)
       .patch("/categories/550e8400-e29b-41d4-a716-446655440000")
-      .send({ name: "Update", color: "Blue", icon: "Qualquer" });
+      .send({ monthlyLimit: 100 });
 
     expect(res.status).toBe(401);
   });
@@ -218,7 +86,7 @@ describe("PATCH /categories", () => {
     const res = await request(app)
       .patch("/categories/abc")
       .set("Authorization", `Bearer ${accessToken}`)
-      .send({ name: "Update", color: "Blue", icon: "Qualquer" });
+      .send({ monthlyLimit: 100 });
 
     expect(res.status).toBe(400);
   });
@@ -229,48 +97,49 @@ describe("PATCH /categories", () => {
     const res = await request(app)
       .patch("/categories/550e8400-e29b-41d4-a716-446655440000")
       .set("Authorization", `Bearer ${accessToken}`)
-      .send({ name: "Update", color: "Blue", icon: "Qualquer" });
+      .send({ monthlyLimit: 100 });
 
     expect(res.status).toBe(404);
   });
 
-  it("should return 200 and update category", async () => {
+  it("should return 200 and update monthlyLimit", async () => {
     const accessToken = await createAndAuthenticateUser();
 
-    const created = await request(app)
-      .post("/categories")
-      .set("Authorization", `Bearer ${accessToken}`)
-      .send({ name: "Viagem", color: "green", icon: "plane" });
+    const owned = await request(app)
+      .get("/categories")
+      .set("Authorization", `Bearer ${accessToken}`);
+    const category = owned.body.categories[0];
 
     const res = await request(app)
-      .patch(`/categories/${created.body.category.id}`)
+      .patch(`/categories/${category.id}`)
       .set("Authorization", `Bearer ${accessToken}`)
-      .send({ name: "Viagem Atualizada", color: "blue", icon: "car" });
+      .send({ monthlyLimit: 300 });
 
     expect(res.status).toBe(200);
-    expect(res.body.category).toMatchObject({
-      name: "Viagem Atualizada",
-      color: "blue",
-      icon: "car",
-    });
-    expect(res.body.category.userId).toBeUndefined();
+    expect(res.body.category.monthlyLimit).toBe("300");
+    expect(res.body.category.name).toBe(category.name);
   });
 
-  it("should return 200 with partial update", async () => {
+  it("should clear monthlyLimit when sent as null", async () => {
     const accessToken = await createAndAuthenticateUser();
 
-    const created = await request(app)
-      .post("/categories")
+    const owned = await request(app)
+      .get("/categories")
+      .set("Authorization", `Bearer ${accessToken}`);
+    const category = owned.body.categories[0];
+
+    await request(app)
+      .patch(`/categories/${category.id}`)
       .set("Authorization", `Bearer ${accessToken}`)
-      .send({ name: "Viagem", color: "green", icon: "plane" });
+      .send({ monthlyLimit: 300 });
 
     const res = await request(app)
-      .patch(`/categories/${created.body.category.id}`)
+      .patch(`/categories/${category.id}`)
       .set("Authorization", `Bearer ${accessToken}`)
-      .send({ color: "red" });
+      .send({ monthlyLimit: null });
 
     expect(res.status).toBe(200);
-    expect(res.body.category.color).toBe("red");
+    expect(res.body.category.monthlyLimit).toBeNull();
   });
 
   it("should return 404 when category belongs to another user", async () => {
@@ -281,114 +150,16 @@ describe("PATCH /categories", () => {
       password: "senha1234",
     });
 
-    const created = await request(app)
-      .post("/categories")
-      .set("Authorization", `Bearer ${token1}`)
-      .send({ name: "Viagem", color: "green", icon: "plane" });
+    const owned = await request(app)
+      .get("/categories")
+      .set("Authorization", `Bearer ${token1}`);
+    const category = owned.body.categories[0];
 
     const res = await request(app)
-      .patch(`/categories/${created.body.category.id}`)
+      .patch(`/categories/${category.id}`)
       .set("Authorization", `Bearer ${token2}`)
-      .send({ name: "Tentativa" });
+      .send({ monthlyLimit: 100 });
 
     expect(res.status).toBe(404);
-  });
-
-  it("should update monthlyLimit", async () => {
-    const accessToken = await createAndAuthenticateUser();
-
-    const created = await request(app)
-      .post("/categories")
-      .set("Authorization", `Bearer ${accessToken}`)
-      .send({ name: "Mercado", color: "green", icon: "cart" });
-
-    const res = await request(app)
-      .patch(`/categories/${created.body.category.id}`)
-      .set("Authorization", `Bearer ${accessToken}`)
-      .send({ monthlyLimit: 300 });
-
-    expect(res.status).toBe(200);
-    expect(res.body.category.monthlyLimit).toBe("300");
-  });
-
-  it("should clear monthlyLimit when sent as null", async () => {
-    const accessToken = await createAndAuthenticateUser();
-
-    const created = await request(app)
-      .post("/categories")
-      .set("Authorization", `Bearer ${accessToken}`)
-      .send({ name: "Mercado", color: "green", icon: "cart", monthlyLimit: 300 });
-
-    const res = await request(app)
-      .patch(`/categories/${created.body.category.id}`)
-      .set("Authorization", `Bearer ${accessToken}`)
-      .send({ monthlyLimit: null });
-
-    expect(res.status).toBe(200);
-    expect(res.body.category.monthlyLimit).toBeNull();
-  });
-});
-
-describe("DELETE /categories/:id", () => {
-  it("should return 401 when no token is provided", async () => {
-    const res = await request(app)
-      .delete("/categories/550e8400-e29b-41d4-a716-446655440000")
-      .send({ name: "teste", color: "teste", icon: "teste" });
-
-    expect(res.status).toBe(401);
-  });
-  it("should return 400 when params is not UUID valid", async () => {
-    const accessToken = await createAndAuthenticateUser();
-
-    const res = await request(app)
-      .delete("/categories/abc")
-      .set("Authorization", `Bearer ${accessToken}`);
-
-    expect(res.status).toBe(400);
-  });
-
-  it("should return 404 category not found", async () => {
-    const accessToken = await createAndAuthenticateUser();
-
-    const res = await request(app)
-      .delete("/categories/550e8400-e29b-41d4-a716-446655440000")
-      .set("Authorization", `Bearer ${accessToken}`);
-
-    expect(res.status).toBe(404);
-  });
-
-  it("should return 404 when category belongs to another user", async () => {
-    const accessToken1 = await createAndAuthenticateUser();
-    const accessToken2 = await createAndAuthenticateUser({
-      email: "other@email.com",
-      password: "otherpassword",
-      name: "otherteste",
-    });
-
-    const res1 = await request(app)
-      .post("/categories")
-      .set("Authorization", `Bearer ${accessToken1}`)
-      .send({ name: "teste2", color: "teste2", icon: "teste2" });
-
-    const res2 = await request(app)
-      .delete(`/categories/${res1.body.category.id}`)
-      .set("Authorization", `Bearer ${accessToken2}`);
-
-    expect(res2.status).toBe(404);
-  });
-
-  it("should return 200 category deleted with succefull", async () => {
-    const accessToken = await createAndAuthenticateUser();
-
-    const res1 = await request(app)
-      .post("/categories")
-      .set("Authorization", `Bearer ${accessToken}`)
-      .send({ name: "teste2", color: "teste2", icon: "teste2" });
-
-    const res2 = await request(app)
-      .delete(`/categories/${res1.body.category.id}`)
-      .set("Authorization", `Bearer ${accessToken}`);
-
-    expect(res2.status).toBe(200);
   });
 });

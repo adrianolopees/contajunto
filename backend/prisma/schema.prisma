@@ -68,15 +68,31 @@ model Category {
   transactions  Transaction[]
   userId        String
   user          User @relation(fields: [userId], references: [id])
+  groupId       String
+  group         CategoryGroup @relation(fields: [groupId], references: [id])
   @@unique([userId, name])
 }
 
+model CategoryGroup {
+  id                String            @id @default(uuid())
+  type              TransactionType
+  name              String            @unique
+  color             String
+  icon              String
+  defaultCategories DefaultCategory[]
+  categories        Category[]
+}
+
 model DefaultCategory {
-  id            String @id @default(uuid())
-  type          TransactionType
-  name          String
-  color         String
-  icon          String
+  id      String @id @default(uuid())
+  type    TransactionType
+  name    String
+  color   String
+  icon    String
+  groupId String
+  group   CategoryGroup @relation(fields: [groupId], references: [id])
+
+  @@unique([groupId, name])
 }
 
 enum TransactionType {
