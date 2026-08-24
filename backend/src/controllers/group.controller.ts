@@ -3,6 +3,7 @@ import { Prisma } from "../generated/prisma/index.js";
 import z from "zod";
 import prisma from "../lib/prisma.js";
 import { getBusinessMonthYear } from "../lib/date.js";
+import { groupSpendingByCategoryGroup } from "../lib/categorySpending.js";
 
 const MAX_GROUP_MEMBERS = 5;
 
@@ -258,10 +259,12 @@ export async function getGroupCategorySpending(req: Request, res: Response) {
     _sum: { amount: true },
   });
 
-  const categorySpending = spending.map((item) => ({
-    categoryId: item.categoryId,
-    total: Number(item._sum.amount ?? 0),
-  }));
+  const categorySpending = await groupSpendingByCategoryGroup(
+    spending.map((item) => ({
+      categoryId: item.categoryId,
+      total: Number(item._sum.amount ?? 0),
+    })),
+  );
 
   res.status(200).json({ categorySpending });
 }

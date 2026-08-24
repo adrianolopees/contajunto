@@ -2,6 +2,7 @@ import { Response, Request } from "express";
 import z from "zod";
 import prisma from "../lib/prisma.js";
 import { getBusinessMonthYear } from "../lib/date.js";
+import { groupSpendingByCategoryGroup } from "../lib/categorySpending.js";
 
 const transactionSchema = z.object({
   amount: z.number().positive().multipleOf(0.01),
@@ -206,10 +207,12 @@ export async function getCategorySpending(req: Request, res: Response) {
     _sum: { amount: true },
   });
 
-  const categorySpending = spending.map((item) => ({
-    categoryId: item.categoryId,
-    total: Number(item._sum.amount ?? 0),
-  }));
+  const categorySpending = await groupSpendingByCategoryGroup(
+    spending.map((item) => ({
+      categoryId: item.categoryId,
+      total: Number(item._sum.amount ?? 0),
+    })),
+  );
 
   res.status(200).json({ categorySpending });
 }

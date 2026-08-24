@@ -470,18 +470,20 @@ describe("GET /groups/transactions/summary/by-category", () => {
     expect(res.status).toBe(404);
   });
 
-  it("should aggregate expense totals by category across members", async () => {
+  it("should aggregate expense totals by parent category group across members", async () => {
     const { accessToken1, accessToken2 } = await createGroupWithTwoMembers();
 
-    const categoryRes = await request(app)
-      .post("/categories")
-      .set("Authorization", `Bearer ${accessToken1}`)
-      .send({ name: "Mercado", color: "#fff", icon: "ShoppingCart", type: "EXPENSE" });
+    const categoriesRes = await request(app)
+      .get("/categories")
+      .set("Authorization", `Bearer ${accessToken1}`);
+    const expenseCategory = categoriesRes.body.categories.find(
+      (c: { type: string }) => c.type === "EXPENSE",
+    );
 
     await request(app)
       .post("/transactions")
       .set("Authorization", `Bearer ${accessToken1}`)
-      .send({ ...validTransaction, categoryId: categoryRes.body.category.id });
+      .send({ ...validTransaction, categoryId: expenseCategory.id });
 
     await request(app)
       .post("/transactions")
@@ -496,7 +498,7 @@ describe("GET /groups/transactions/summary/by-category", () => {
     expect(res.body.categorySpending).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          categoryId: categoryRes.body.category.id,
+          group: expenseCategory.group,
           total: validTransaction.amount,
         }),
       ]),

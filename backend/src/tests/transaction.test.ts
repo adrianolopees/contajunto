@@ -241,10 +241,10 @@ describe("PATCH /transactions/:id", () => {
       password: "senha1234",
     });
 
-    const categoryRes = await request(app)
-      .post("/categories")
-      .set("Authorization", `Bearer ${accessToken2}`)
-      .send({ name: "Viagem", color: "green", icon: "plane" });
+    const categoriesRes = await request(app)
+      .get("/categories")
+      .set("Authorization", `Bearer ${accessToken2}`);
+    const otherUserCategory = categoriesRes.body.categories[0];
 
     const transactionRes = await request(app)
       .post("/transactions")
@@ -254,7 +254,7 @@ describe("PATCH /transactions/:id", () => {
     const res = await request(app)
       .patch(`/transactions/${transactionRes.body.transaction.id}`)
       .set("Authorization", `Bearer ${accessToken1}`)
-      .send({ categoryId: categoryRes.body.category.id });
+      .send({ categoryId: otherUserCategory.id });
 
     expect(res.status).toBe(404);
   });
@@ -528,13 +528,15 @@ describe("GET /transactions/summary/by-category", () => {
     expect(res.body.categorySpending).toEqual([]);
   });
 
-  it("should aggregate expense total for a category", async () => {
+  it("should aggregate expense total for a category, grouped by its parent group", async () => {
     const accessToken = await createAndAuthenticateUser();
 
-    const categoryRes = await request(app)
-      .post("/categories")
-      .set("Authorization", `Bearer ${accessToken}`)
-      .send({ name: "Mercado", color: "green", icon: "cart" });
+    const categoriesRes = await request(app)
+      .get("/categories")
+      .set("Authorization", `Bearer ${accessToken}`);
+    const expenseCategory = categoriesRes.body.categories.find(
+      (c: { type: string }) => c.type === "EXPENSE",
+    );
 
     await request(app)
       .post("/transactions")
@@ -543,7 +545,7 @@ describe("GET /transactions/summary/by-category", () => {
         amount: 40,
         type: "EXPENSE",
         description: "Mercado semana",
-        categoryId: categoryRes.body.category.id,
+        categoryId: expenseCategory.id,
       });
 
     const res = await request(app)
@@ -552,7 +554,7 @@ describe("GET /transactions/summary/by-category", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.categorySpending).toContainEqual({
-      categoryId: categoryRes.body.category.id,
+      group: expenseCategory.group,
       total: 40,
     });
   });
@@ -560,10 +562,12 @@ describe("GET /transactions/summary/by-category", () => {
   it("should not include income transactions in a category's spending total", async () => {
     const accessToken = await createAndAuthenticateUser();
 
-    const categoryRes = await request(app)
-      .post("/categories")
-      .set("Authorization", `Bearer ${accessToken}`)
-      .send({ name: "Bônus", color: "blue", icon: "wallet" });
+    const categoriesRes = await request(app)
+      .get("/categories")
+      .set("Authorization", `Bearer ${accessToken}`);
+    const incomeCategory = categoriesRes.body.categories.find(
+      (c: { type: string }) => c.type === "INCOME",
+    );
 
     await request(app)
       .post("/transactions")
@@ -572,7 +576,7 @@ describe("GET /transactions/summary/by-category", () => {
         amount: 5000,
         type: "INCOME",
         description: "Salário do mês",
-        categoryId: categoryRes.body.category.id,
+        categoryId: incomeCategory.id,
       });
 
     const res = await request(app)
