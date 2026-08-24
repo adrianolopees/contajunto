@@ -5,7 +5,6 @@ import { getTransactions, type Transaction } from "@/services/transactions";
 import MonthPicker from "@/components/MonthPicker";
 import { useMonthNavigation } from "@/hooks/useMonthNavigation";
 import { formatCurrency } from "@/lib/format";
-import { Plus } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 
 export default function TransactionList() {
@@ -68,14 +67,6 @@ export default function TransactionList() {
           ))}
         </ul>
       )}
-
-      <Link
-        to="/transactions/new"
-        aria-label="Nova transação"
-        className="fixed bottom-20 right-4 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg"
-      >
-        <Plus size={24} />
-      </Link>
     </div>
   );
 }
