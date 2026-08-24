@@ -1,5 +1,12 @@
 import { api } from "@/lib/api";
 
+export interface CategoryGroup {
+  id: string;
+  name: string;
+  color: string;
+  icon: string;
+}
+
 export interface Category {
   id: string;
   type: "INCOME" | "EXPENSE";
@@ -7,17 +14,7 @@ export interface Category {
   color: string;
   icon: string;
   monthlyLimit: string | null;
-}
-
-type CategoryInput = Omit<Category, "id" | "monthlyLimit"> & {
-  monthlyLimit?: number | null;
-};
-
-export async function createCategory(
-  data: CategoryInput,
-): Promise<Category> {
-  const res = await api.post("/categories", data);
-  return res.data.category;
+  group: CategoryGroup;
 }
 
 export async function getCategories(): Promise<Category[]> {
@@ -27,17 +24,8 @@ export async function getCategories(): Promise<Category[]> {
 
 export async function updateCategory(
   id: string,
-  data: Partial<CategoryInput>,
+  data: { monthlyLimit?: number | null },
 ): Promise<Category> {
   const res = await api.patch(`/categories/${id}`, data);
   return res.data.category;
-}
-
-export async function getDefaultCategories(): Promise<Category[]> {
-  const res = await api.get("/categories/default");
-  return res.data.categoriesDefault;
-}
-
-export async function deleteCategory(id: string) {
-  await api.delete(`/categories/${id}`);
 }

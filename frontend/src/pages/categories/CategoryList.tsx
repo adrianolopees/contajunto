@@ -9,20 +9,20 @@ import CategoryBadge from "@/components/CategoryBadge";
 import { useMonthNavigation } from "@/hooks/useMonthNavigation";
 import { formatCurrency } from "@/lib/format";
 import * as Icons from "lucide-react";
-import { ChevronRight, Plus } from "lucide-react";
-import CategoryForm from "@/components/categories/CategoryForm";
+import { ChevronDown, ChevronRight, ChevronUp } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import { cn } from "@/lib/utils";
 
 export default function CategoryList() {
   const { month, year, prev, next } = useMonthNavigation();
   const [type, setType] = useState<"EXPENSE" | "INCOME">("EXPENSE");
+  const [view, setView] = useState<"categorias" | "grupos">("categorias");
+  const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [spendingByCategory, setSpendingByCategory] = useState<
     Map<string, number>
   >(new Map());
   const [isLoading, setIsLoading] = useState(false);
-  const [open, setOpen] = useState(false);
 
   const filteredCategories = useMemo(
     () => categories.filter((c) => c.type === type),
@@ -39,6 +39,34 @@ export default function CategoryList() {
   }, [filteredCategories, spendingByCategory]);
 
   const totalForType = enrichedCategories.reduce((sum, c) => sum + c.total, 0);
+
+  // só categorias com movimento no mês interessam pro extrato — a lista
+  // completa (gasta ou não) fica reservada pro seletor do lançamento
+  const spentCategories = useMemo(
+    () => enrichedCategories.filter((c) => c.total > 0),
+    [enrichedCategories],
+  );
+
+  const groupedCategories = useMemo(() => {
+    const map = new Map<
+      string,
+      { group: Category["group"]; items: typeof spentCategories; total: number }
+    >();
+    for (const category of spentCategories) {
+      const entry = map.get(category.group.id);
+      if (entry) {
+        entry.items.push(category);
+        entry.total += category.total;
+      } else {
+        map.set(category.group.id, {
+          group: category.group,
+          items: [category],
+          total: category.total,
+        });
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => b.total - a.total);
+  }, [spentCategories]);
 
   const loadData = useCallback(async () => {
     try {
@@ -72,8 +100,7 @@ export default function CategoryList() {
 
   return (
     <div className="p-4 pb-24">
-      <h1 className="mb-4 text-xl font-semibold">Categorias</h1>
-
+      <MonthPicker month={month} year={year} onPrev={prev} onNext={next} />
       <div className="mb-4 grid grid-cols-2 gap-2 rounded-xl border p-1">
         <button
           type="button"
@@ -108,15 +135,118 @@ export default function CategoryList() {
         <p className="text-2xl font-bold">{formatCurrency(totalForType)}</p>
       </div>
 
-      <MonthPicker month={month} year={year} onPrev={prev} onNext={next} />
+      <div className="mb-4 grid grid-cols-2 gap-2 rounded-xl border p-1">
+        <button
+          type="button"
+          onClick={() => setView("categorias")}
+          className={cn(
+            "rounded-lg py-2 text-sm font-medium transition-colors",
+            view === "categorias"
+              ? "bg-background text-foreground"
+              : "text-muted-foreground hover:bg-muted",
+          )}
+        >
+          Categorias
+        </button>
+        <button
+          type="button"
+          onClick={() => setView("grupos")}
+          className={cn(
+            "rounded-lg py-2 text-sm font-medium transition-colors",
+            view === "grupos"
+              ? "bg-background text-foreground"
+              : "text-muted-foreground hover:bg-muted",
+          )}
+        >
+          Grupos
+        </button>
+      </div>
 
       {isLoading ? (
         <p className="py-8 text-center text-muted-foreground">Carregando...</p>
       ) : enrichedCategories.length === 0 ? (
         <EmptyState message="Nenhuma categoria cadastrada." icon={Icons.Tag} />
+      ) : spentCategories.length === 0 ? (
+        <EmptyState
+          message={
+            type === "EXPENSE"
+              ? "Nenhum gasto neste mês."
+              : "Nenhum ganho neste mês."
+          }
+          icon={Icons.Tag}
+        />
+      ) : view === "grupos" ? (
+        <ul className="mt-4 space-y-2">
+          {groupedCategories.map(({ group, items, total }) => {
+            const isExpanded = expandedGroupId === group.id;
+            const percentage =
+              totalForType > 0 ? Math.round((total / totalForType) * 100) : 0;
+
+            return (
+              <li
+                key={group.id}
+                className="overflow-hidden rounded-lg border bg-card"
+              >
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExpandedGroupId(isExpanded ? null : group.id)
+                  }
+                  className="flex w-full items-center gap-3 p-3 text-left"
+                >
+                  <CategoryBadge icon={group.icon} color={group.color} size={36} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">{group.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {percentage}%
+                    </p>
+                  </div>
+                  <p className="shrink-0 text-sm font-medium">
+                    {formatCurrency(total)}
+                  </p>
+                  {isExpanded ? (
+                    <ChevronUp
+                      size={18}
+                      className="shrink-0 text-muted-foreground"
+                    />
+                  ) : (
+                    <ChevronDown
+                      size={18}
+                      className="shrink-0 text-muted-foreground"
+                    />
+                  )}
+                </button>
+                {isExpanded && (
+                  <ul className="divide-y border-t">
+                    {items.map((item) => (
+                      <li key={item.id}>
+                        <Link
+                          to={`/categories/${item.id}`}
+                          className="flex items-center gap-3 p-3 pl-12 text-sm"
+                        >
+                          <CategoryBadge
+                            icon={item.icon}
+                            color={item.color}
+                            size={24}
+                          />
+                          <span className="min-w-0 flex-1 truncate">
+                            {item.name}
+                          </span>
+                          <span className="shrink-0 font-medium">
+                            {formatCurrency(item.total)}
+                          </span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            );
+          })}
+        </ul>
       ) : (
         <ul className="mt-4 space-y-2">
-          {enrichedCategories.map((category) => {
+          {spentCategories.map((category) => {
             const limit = category.monthlyLimit
               ? Number(category.monthlyLimit)
               : null;
@@ -126,7 +256,7 @@ export default function CategoryList() {
               <li key={category.id}>
                 <Link
                   to={`/categories/${category.id}`}
-                  className="flex w-full items-center gap-3 rounded-lg border p-3 text-left"
+                  className="flex w-full items-center gap-3 rounded-lg border bg-card p-3 text-left"
                 >
                   <CategoryBadge
                     icon={category.icon}
@@ -162,14 +292,6 @@ export default function CategoryList() {
           })}
         </ul>
       )}
-      <button
-        onClick={() => setOpen(true)}
-        aria-label="Nova categoria"
-        className="fixed bottom-20 right-4 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg"
-      >
-        <Plus size={24} />
-      </button>
-      <CategoryForm open={open} onOpenChange={setOpen} onSuccess={loadData} />
     </div>
   );
 }

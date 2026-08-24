@@ -1,67 +1,21 @@
-import {
-  createCategory,
-  deleteCategory,
-  updateCategory,
-  type Category,
-} from "@/services/categories";
+import { updateCategory, type Category } from "@/services/categories";
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "../ui/dialog";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useState } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
 import toast from "react-hot-toast";
-import axios from "axios";
 import z from "zod";
 import { Label } from "../ui/label";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
-import { Trash2 } from "lucide-react";
-import * as Icons from "lucide-react";
-import { cn } from "@/lib/utils";
+import CategoryBadge from "@/components/CategoryBadge";
 
-const ICON_OPTIONS = [
-  "Utensils",
-  "Home",
-  "Car",
-  "HeartPulse",
-  "BookOpen",
-  "Gamepad2",
-  "Shirt",
-  "RefreshCw",
-  "Sparkles",
-  "PawPrint",
-  "Plane",
-  "CreditCard",
-  "Package",
-  "Banknote",
-  "Receipt",
-  "Briefcase",
-  "TrendingUp",
-  "Plus",
-  "ShoppingCart",
-  "Coffee",
-  "Music",
-  "Dumbbell",
-  "Laptop",
-  "Baby",
-  "Gift",
-  "Fuel",
-  "Smartphone",
-  "Zap",
-  "Building",
-  "Wallet",
-];
-
-const CategoryFormSchema = z.object({
-  type: z.enum(["INCOME", "EXPENSE"]),
-  name: z.string().min(2, "Minimo 2 caracateres"),
-  color: z.string().min(1, "Precisa existir a cor"),
-  icon: z.string().min(1, "Selecione um ícone"),
+const EditCategoryFormSchema = z.object({
   monthlyLimit: z
     .string()
     .optional()
@@ -75,12 +29,12 @@ const CategoryFormSchema = z.object({
     ),
 });
 
-const EditCategoryFormSchema = CategoryFormSchema.partial({ type: true });
+type EditCategoryFormValues = z.infer<typeof EditCategoryFormSchema>;
 
 interface CategoryFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  category?: Category;
+  category: Category;
   onSuccess: () => void;
 }
 
@@ -90,62 +44,25 @@ export default function CategoryForm({
   category,
   onSuccess,
 }: CategoryFormProps) {
-  const form = useForm<z.infer<typeof EditCategoryFormSchema>>({
-    resolver: zodResolver(
-      category ? EditCategoryFormSchema : CategoryFormSchema,
-    ),
+  const form = useForm<EditCategoryFormValues>({
+    resolver: zodResolver(EditCategoryFormSchema),
   });
 
-  const selectedIcon = useWatch({ control: form.control, name: "icon" });
-  const selectedColor = useWatch({ control: form.control, name: "color" });
-
   useEffect(() => {
-    form.reset({
-      type: category?.type ?? "EXPENSE",
-      name: category?.name ?? "",
-      color: category?.color ?? "#6b7280",
-      icon: category?.icon ?? "",
-      monthlyLimit: category?.monthlyLimit ?? "",
-    });
+    form.reset({ monthlyLimit: category.monthlyLimit ?? "" });
   }, [category, form]);
 
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-
-  async function onSubmit(data: z.infer<typeof EditCategoryFormSchema>) {
+  async function onSubmit(data: EditCategoryFormValues) {
     try {
       const monthlyLimit = data.monthlyLimit
         ? parseFloat(data.monthlyLimit.replace(",", "."))
         : null;
-
-      if (!category) {
-        const parsed = CategoryFormSchema.parse(data);
-        await createCategory({ ...parsed, monthlyLimit });
-        toast.success("Categoria criada com sucesso!");
-      } else {
-        await updateCategory(category.id, { ...data, monthlyLimit });
-        toast.success("Categoria atualizada com sucesso!");
-      }
-      onOpenChange(false);
-      onSuccess();
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status === 409) {
-        toast.error("Já existe uma categoria com esse nome.");
-      } else {
-        toast.error("Erro ao salvar categoria. Tente novamente.");
-      }
-    }
-  }
-
-  async function handleDelete() {
-    try {
-      if (!category) return;
-      await deleteCategory(category.id);
-      toast.success("Categoria deletada com sucesso!");
-      setConfirmDeleteOpen(false);
+      await updateCategory(category.id, { monthlyLimit });
+      toast.success("Categoria atualizada com sucesso!");
       onOpenChange(false);
       onSuccess();
     } catch {
-      toast.error("Erro ao deletar categoria. Tente novamente.");
+      toast.error("Erro ao salvar categoria. Tente novamente.");
     }
   }
 
@@ -153,41 +70,20 @@ export default function CategoryForm({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>
-            {category ? "Editar categoria" : "Nova categoria"}
-          </DialogTitle>
+          <DialogTitle>Editar categoria</DialogTitle>
         </DialogHeader>
+
+        <div className="flex items-center gap-3">
+          <CategoryBadge icon={category.icon} color={category.color} size={40} />
+          <div>
+            <p className="font-medium">{category.name}</p>
+            <p className="text-xs text-muted-foreground">
+              {category.group.name}
+            </p>
+          </div>
+        </div>
+
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <div>
-            <Label htmlFor="name">Nome</Label>
-            <Input
-              {...form.register("name")}
-              id="name"
-              type="text"
-              placeholder="Ex: Alimentação"
-            />
-            {form.formState.errors.name?.message && (
-              <p className="text-sm text-destructive">
-                {form.formState.errors.name.message}
-              </p>
-            )}
-          </div>
-
-          <div>
-            <Label htmlFor="color">Cor</Label>
-            <div className="flex items-center gap-3">
-              <input
-                {...form.register("color")}
-                id="color"
-                type="color"
-                className="h-10 w-14 cursor-pointer rounded border p-1"
-              />
-              <span className="text-sm text-muted-foreground">
-                {selectedColor}
-              </span>
-            </div>
-          </div>
-
           <div>
             <Label htmlFor="monthlyLimit">Limite mensal (opcional)</Label>
             <Input
@@ -204,78 +100,11 @@ export default function CategoryForm({
             )}
           </div>
 
-          <div>
-            <Label>Ícone</Label>
-            <div className="mt-2 grid grid-cols-6 gap-2">
-              {ICON_OPTIONS.map((name) => {
-                const Icon = Icons[
-                  name as keyof typeof Icons
-                ] as Icons.LucideIcon;
-                if (!Icon) return null;
-                return (
-                  <button
-                    key={name}
-                    type="button"
-                    onClick={() =>
-                      form.setValue("icon", name, { shouldValidate: true })
-                    }
-                    className={cn(
-                      "flex items-center justify-center rounded-lg border p-2 transition-colors",
-                      selectedIcon === name
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "hover:bg-muted",
-                    )}
-                  >
-                    <Icon size={18} />
-                  </button>
-                );
-              })}
-            </div>
-            {form.formState.errors.icon?.message && (
-              <p className="mt-1 text-sm text-destructive">
-                {form.formState.errors.icon.message}
-              </p>
-            )}
-          </div>
-
-          <div className="flex justify-between">
-            {category && (
-              <Button
-                variant="destructive"
-                type="button"
-                onClick={() => setConfirmDeleteOpen(true)}
-              >
-                <Trash2 size={16} /> Excluir
-              </Button>
-            )}
+          <div className="flex justify-end">
             <Button type="submit">Salvar</Button>
           </div>
         </form>
       </DialogContent>
-
-      <Dialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Excluir categoria?</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            As transações que usam essa categoria ficam sem categoria. Essa ação
-            não pode ser desfeita.
-          </p>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setConfirmDeleteOpen(false)}
-            >
-              Cancelar
-            </Button>
-            <Button type="button" variant="destructive" onClick={handleDelete}>
-              Excluir
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </Dialog>
   );
 }
