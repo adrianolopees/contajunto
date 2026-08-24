@@ -25,7 +25,12 @@ export interface TransactionsSummary {
 }
 
 export interface CategorySpending {
-  categoryId: string | null;
+  group: {
+    id: string;
+    name: string;
+    color: string;
+    icon: string;
+  } | null;
   total: number;
 }
 

@@ -4,13 +4,16 @@ import toast from "react-hot-toast";
 import {
   type TransactionsSummary,
   type Transaction,
+  type CategorySpending,
   getTransactions,
   getTransactionsSummary,
+  getCategorySpending,
 } from "@/services/transactions";
 import {
   getGroup,
   getGroupTransactions,
   getGroupTransactionsSummary,
+  getGroupCategorySpending,
   type Group,
   type GroupTransaction,
 } from "@/services/groups";
@@ -37,29 +40,12 @@ function greeting() {
   return "Boa noite";
 }
 
-function categorySpendingFromTransactions(transactions: Transaction[]) {
-  const byCategory = new Map<
-    string,
-    { label: string; value: number; color: string }
-  >();
-
-  for (const t of transactions) {
-    if (t.type !== "EXPENSE") continue;
-    const key = t.category?.id ?? "none";
-    const existing = byCategory.get(key);
-    const amount = Number(t.amount);
-    if (existing) {
-      existing.value += amount;
-    } else {
-      byCategory.set(key, {
-        label: t.category?.name ?? "Sem categoria",
-        value: amount,
-        color: t.category?.color ?? UNCATEGORIZED_COLOR,
-      });
-    }
-  }
-
-  return Array.from(byCategory.values()).sort((a, b) => b.value - a.value);
+function toDonutSlices(categorySpending: CategorySpending[]) {
+  return categorySpending.map((item) => ({
+    label: item.group?.name ?? "Sem categoria",
+    value: item.total,
+    color: item.group?.color ?? UNCATEGORIZED_COLOR,
+  }));
 }
 
 export default function Dashboard() {
@@ -71,6 +57,9 @@ export default function Dashboard() {
     (Transaction | GroupTransaction)[]
   >([]);
   const [summary, setSummary] = useState<TransactionsSummary | null>(null);
+  const [categorySpending, setCategorySpending] = useState<
+    CategorySpending[]
+  >([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -90,19 +79,25 @@ export default function Dashboard() {
     try {
       setIsLoading(true);
       if (view === "family") {
-        const [transactionsData, summaryData] = await Promise.all([
-          getGroupTransactions({ month, year }),
-          getGroupTransactionsSummary({ month, year }),
-        ]);
+        const [transactionsData, summaryData, categorySpendingData] =
+          await Promise.all([
+            getGroupTransactions({ month, year }),
+            getGroupTransactionsSummary({ month, year }),
+            getGroupCategorySpending({ month, year }),
+          ]);
         setTransactions(transactionsData);
         setSummary(summaryData);
+        setCategorySpending(categorySpendingData);
       } else {
-        const [transactionsData, summaryData] = await Promise.all([
-          getTransactions({ month, year }),
-          getTransactionsSummary({ month, year }),
-        ]);
+        const [transactionsData, summaryData, categorySpendingData] =
+          await Promise.all([
+            getTransactions({ month, year }),
+            getTransactionsSummary({ month, year }),
+            getCategorySpending({ month, year }),
+          ]);
         setTransactions(transactionsData);
         setSummary(summaryData);
+        setCategorySpending(categorySpendingData);
       }
     } catch {
       toast.error("Não foi possível carregar. Tente novamente.");
@@ -115,7 +110,6 @@ export default function Dashboard() {
     loadData();
   }, [loadData]);
 
-  const categorySpending = categorySpendingFromTransactions(transactions);
   const recentTransactions = transactions.slice(0, 5);
 
   return (
@@ -125,6 +119,7 @@ export default function Dashboard() {
           {greeting()}, {user?.name.split(" ")[0]}
         </h1>
       </div>
+      <MonthPicker month={month} year={year} onPrev={prev} onNext={next} />
 
       {user?.familyGroupId && (
         <div className="grid grid-cols-2 gap-2 rounded-xl border p-1">
@@ -154,8 +149,6 @@ export default function Dashboard() {
           </button>
         </div>
       )}
-
-      <MonthPicker month={month} year={year} onPrev={prev} onNext={next} />
 
       <Card className="border-none bg-primary text-primary-foreground">
         <CardContent className="space-y-3">
@@ -217,10 +210,10 @@ export default function Dashboard() {
           <EmptyState message="Nenhum gasto neste mês." />
         ) : (
           <DonutChart
-            data={categorySpending}
+            data={toDonutSlices(categorySpending)}
             centerLabel="Total"
             centerValue={formatCurrency(
-              categorySpending.reduce((sum, c) => sum + c.value, 0),
+              categorySpending.reduce((sum, c) => sum + c.total, 0),
             )}
           />
         )}
