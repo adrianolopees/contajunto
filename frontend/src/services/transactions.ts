@@ -24,6 +24,15 @@ export interface TransactionsSummary {
   balance: number;
 }
 
+export interface CategorySpendingLeaf {
+  id: string;
+  name: string;
+  color: string;
+  icon: string;
+  userId: string;
+  total: number;
+}
+
 export interface CategorySpending {
   group: {
     id: string;
@@ -32,6 +41,7 @@ export interface CategorySpending {
     icon: string;
   } | null;
   total: number;
+  categories: CategorySpendingLeaf[];
 }
 
 export async function createTransaction(data: {

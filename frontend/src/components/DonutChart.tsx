@@ -1,5 +1,4 @@
 interface DonutSlice {
-  label: string;
   value: number;
   color: string;
 }
@@ -13,7 +12,7 @@ interface DonutChartProps {
 
 export default function DonutChart({
   data,
-  size = 128,
+  size = 220,
   centerLabel,
   centerValue,
 }: DonutChartProps) {
@@ -31,7 +30,7 @@ export default function DonutChart({
     total > 0 ? `conic-gradient(${stops.join(", ")})` : undefined;
 
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex justify-center py-2">
       <div
         className="relative shrink-0 rounded-full bg-muted"
         style={{ width: size, height: size, background }}
@@ -39,35 +38,19 @@ export default function DonutChart({
         <div
           className="absolute flex flex-col items-center justify-center rounded-full bg-card text-center"
           style={{
-            inset: size * 0.22,
+            inset: size * 0.24,
           }}
         >
           {centerLabel && (
-            <span className="text-[10px] text-muted-foreground">
+            <span className="text-xs text-muted-foreground">
               {centerLabel}
             </span>
           )}
           {centerValue && (
-            <span className="text-xs font-bold">{centerValue}</span>
+            <span className="text-lg font-bold">{centerValue}</span>
           )}
         </div>
       </div>
-      <ul className="flex-1 space-y-1.5">
-        {data.map((slice) => (
-          <li key={slice.label} className="flex items-center gap-2 text-sm">
-            <span
-              className="size-2.5 shrink-0 rounded-full"
-              style={{ backgroundColor: slice.color }}
-            />
-            <span className="flex-1 truncate text-muted-foreground">
-              {slice.label}
-            </span>
-            <span className="font-medium tabular-nums">
-              {total > 0 ? Math.round((slice.value / total) * 100) : 0}%
-            </span>
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }
