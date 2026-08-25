@@ -556,6 +556,16 @@ describe("GET /transactions/summary/by-category", () => {
     expect(res.body.categorySpending).toContainEqual({
       group: expenseCategory.group,
       total: 40,
+      categories: [
+        {
+          id: expenseCategory.id,
+          name: expenseCategory.name,
+          color: expenseCategory.color,
+          icon: expenseCategory.icon,
+          userId: expect.any(String),
+          total: 40,
+        },
+      ],
     });
   });
 
