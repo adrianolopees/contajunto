@@ -6,10 +6,11 @@ import { getCategories } from "@/services/categories";
 import { getTransactions } from "@/services/transactions";
 import MonthPicker from "@/components/MonthPicker";
 import CategoryBadge from "@/components/CategoryBadge";
+import ExpandableCategoryGroups from "@/components/categories/ExpandableCategoryGroups";
 import { useMonthNavigation } from "@/hooks/useMonthNavigation";
 import { formatCurrency } from "@/lib/format";
 import * as Icons from "lucide-react";
-import { ChevronDown, ChevronRight, ChevronUp } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import { cn } from "@/lib/utils";
 
@@ -17,7 +18,6 @@ export default function CategoryList() {
   const { month, year, prev, next } = useMonthNavigation();
   const [type, setType] = useState<"EXPENSE" | "INCOME">("EXPENSE");
   const [view, setView] = useState<"categorias" | "grupos">("categorias");
-  const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [spendingByCategory, setSpendingByCategory] = useState<
     Map<string, number>
@@ -176,74 +176,23 @@ export default function CategoryList() {
           icon={Icons.Tag}
         />
       ) : view === "grupos" ? (
-        <ul className="mt-4 space-y-2">
-          {groupedCategories.map(({ group, items, total }) => {
-            const isExpanded = expandedGroupId === group.id;
-            const percentage =
-              totalForType > 0 ? Math.round((total / totalForType) * 100) : 0;
-
-            return (
-              <li
-                key={group.id}
-                className="overflow-hidden rounded-lg border bg-card"
-              >
-                <button
-                  type="button"
-                  onClick={() =>
-                    setExpandedGroupId(isExpanded ? null : group.id)
-                  }
-                  className="flex w-full items-center gap-3 p-3 text-left"
-                >
-                  <CategoryBadge icon={group.icon} color={group.color} size={36} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{group.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {percentage}%
-                    </p>
-                  </div>
-                  <p className="shrink-0 text-sm font-medium">
-                    {formatCurrency(total)}
-                  </p>
-                  {isExpanded ? (
-                    <ChevronUp
-                      size={18}
-                      className="shrink-0 text-muted-foreground"
-                    />
-                  ) : (
-                    <ChevronDown
-                      size={18}
-                      className="shrink-0 text-muted-foreground"
-                    />
-                  )}
-                </button>
-                {isExpanded && (
-                  <ul className="divide-y border-t">
-                    {items.map((item) => (
-                      <li key={item.id}>
-                        <Link
-                          to={`/categories/${item.id}`}
-                          className="flex items-center gap-3 p-3 pl-12 text-sm"
-                        >
-                          <CategoryBadge
-                            icon={item.icon}
-                            color={item.color}
-                            size={24}
-                          />
-                          <span className="min-w-0 flex-1 truncate">
-                            {item.name}
-                          </span>
-                          <span className="shrink-0 font-medium">
-                            {formatCurrency(item.total)}
-                          </span>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+        <ExpandableCategoryGroups
+          groups={groupedCategories}
+          totalForPercentage={totalForType}
+          getItemKey={(item) => item.id}
+          renderItem={(item) => (
+            <Link
+              to={`/categories/${item.id}`}
+              className="flex items-center gap-3 p-3 pl-12 text-sm"
+            >
+              <CategoryBadge icon={item.icon} color={item.color} size={24} />
+              <span className="min-w-0 flex-1 truncate">{item.name}</span>
+              <span className="shrink-0 font-medium">
+                {formatCurrency(item.total)}
+              </span>
+            </Link>
+          )}
+        />
       ) : (
         <ul className="mt-4 space-y-2">
           {spentCategories.map((category) => {
