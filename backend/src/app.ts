@@ -29,24 +29,22 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 
-app.use("/health", healthRoutes);
-app.use("/auth", authRoutes);
-app.use("/users", userRoutes);
-app.use("/groups", groupRoutes);
-app.use("/transactions", transactionRoutes);
-app.use("/categories", categorieRoutes);
+app.use("/api/health", healthRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/groups", groupRoutes);
+app.use("/api/transactions", transactionRoutes);
+app.use("/api/categories", categorieRoutes);
 
 // Em produção o mesmo serviço serve a SPA e a API (origem única -> cookie
-// first-party, sem CORS). Assets estáticos primeiro; qualquer GET restante
-// que não seja rota de API cai no index.html (client-side routing).
+// first-party, sem CORS). Assets estáticos primeiro; qualquer GET que não
+// seja /api/* cai no index.html (client-side routing).
 if (process.env.NODE_ENV === "production") {
   const clientDist = path.resolve(import.meta.dirname, "../../frontend/dist");
-  const apiPrefixes =
-    /^\/(auth|users|groups|transactions|categories|health)(\/|$)/;
 
   app.use(express.static(clientDist));
   app.use((req, res, next) => {
-    if (req.method !== "GET" || apiPrefixes.test(req.path)) {
+    if (req.method !== "GET" || req.path.startsWith("/api/")) {
       next();
       return;
     }

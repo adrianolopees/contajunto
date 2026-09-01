@@ -8,9 +8,9 @@ const defaultUser = {
 };
 
 export async function createAndAuthenticateUser(user = defaultUser) {
-  await request(app).post("/auth/register").send(user);
+  await request(app).post("/api/auth/register").send(user);
   const res = await request(app)
-    .post("/auth/login")
+    .post("/api/auth/login")
     .send({ email: user.email, password: user.password });
   return res.body.accessToken as string;
 }

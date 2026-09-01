@@ -20,7 +20,7 @@ afterAll(async () => {
 
 describe("GET /categories/default", () => {
   it("should return 200 with default categories without auth", async () => {
-    const res = await request(app).get("/categories/default");
+    const res = await request(app).get("/api/categories/default");
 
     expect(res.status).toBe(200);
     expect(res.body.categoriesDefault).toBeInstanceOf(Array);
@@ -28,7 +28,7 @@ describe("GET /categories/default", () => {
   });
 
   it("should return default categories with expected fields, including group", async () => {
-    const res = await request(app).get("/categories/default");
+    const res = await request(app).get("/api/categories/default");
 
     expect(res.status).toBe(200);
     expect(res.body.categoriesDefault[0]).toMatchObject({
@@ -46,13 +46,13 @@ describe("GET /categories/default", () => {
 
 describe("GET /categories", () => {
   it("should return 401 when no token is provided", async () => {
-    const res = await request(app).get("/categories");
+    const res = await request(app).get("/api/categories");
     expect(res.status).toBe(401);
   });
 
   it("should return 401 token invalid", async () => {
     const res = await request(app)
-      .get("/categories")
+      .get("/api/categories")
       .set("Authorization", `Bearer abc`);
 
     expect(res.status).toBe(401);
@@ -62,7 +62,7 @@ describe("GET /categories", () => {
     const accessToken = await createAndAuthenticateUser();
 
     const res = await request(app)
-      .get("/categories")
+      .get("/api/categories")
       .set("Authorization", `Bearer ${accessToken}`);
 
     expect(res.status).toBe(200);
@@ -74,7 +74,7 @@ describe("GET /categories", () => {
 describe("PATCH /categories", () => {
   it("should return 401 when no token is provided", async () => {
     const res = await request(app)
-      .patch("/categories/550e8400-e29b-41d4-a716-446655440000")
+      .patch("/api/categories/550e8400-e29b-41d4-a716-446655440000")
       .send({ monthlyLimit: 100 });
 
     expect(res.status).toBe(401);
@@ -84,7 +84,7 @@ describe("PATCH /categories", () => {
     const accessToken = await createAndAuthenticateUser();
 
     const res = await request(app)
-      .patch("/categories/abc")
+      .patch("/api/categories/abc")
       .set("Authorization", `Bearer ${accessToken}`)
       .send({ monthlyLimit: 100 });
 
@@ -95,7 +95,7 @@ describe("PATCH /categories", () => {
     const accessToken = await createAndAuthenticateUser();
 
     const res = await request(app)
-      .patch("/categories/550e8400-e29b-41d4-a716-446655440000")
+      .patch("/api/categories/550e8400-e29b-41d4-a716-446655440000")
       .set("Authorization", `Bearer ${accessToken}`)
       .send({ monthlyLimit: 100 });
 
@@ -106,12 +106,12 @@ describe("PATCH /categories", () => {
     const accessToken = await createAndAuthenticateUser();
 
     const owned = await request(app)
-      .get("/categories")
+      .get("/api/categories")
       .set("Authorization", `Bearer ${accessToken}`);
     const category = owned.body.categories[0];
 
     const res = await request(app)
-      .patch(`/categories/${category.id}`)
+      .patch(`/api/categories/${category.id}`)
       .set("Authorization", `Bearer ${accessToken}`)
       .send({ monthlyLimit: 300 });
 
@@ -124,17 +124,17 @@ describe("PATCH /categories", () => {
     const accessToken = await createAndAuthenticateUser();
 
     const owned = await request(app)
-      .get("/categories")
+      .get("/api/categories")
       .set("Authorization", `Bearer ${accessToken}`);
     const category = owned.body.categories[0];
 
     await request(app)
-      .patch(`/categories/${category.id}`)
+      .patch(`/api/categories/${category.id}`)
       .set("Authorization", `Bearer ${accessToken}`)
       .send({ monthlyLimit: 300 });
 
     const res = await request(app)
-      .patch(`/categories/${category.id}`)
+      .patch(`/api/categories/${category.id}`)
       .set("Authorization", `Bearer ${accessToken}`)
       .send({ monthlyLimit: null });
 
@@ -151,12 +151,12 @@ describe("PATCH /categories", () => {
     });
 
     const owned = await request(app)
-      .get("/categories")
+      .get("/api/categories")
       .set("Authorization", `Bearer ${token1}`);
     const category = owned.body.categories[0];
 
     const res = await request(app)
-      .patch(`/categories/${category.id}`)
+      .patch(`/api/categories/${category.id}`)
       .set("Authorization", `Bearer ${token2}`)
       .send({ monthlyLimit: 100 });
 

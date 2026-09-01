@@ -23,7 +23,7 @@ const testToken = {
 describe("GET /users/me", () => {
   it("should return token not found.", async () => {
     const res = await request(app)
-      .get("/users/me")
+      .get("/api/users/me")
       .set("Authorization", `Bearer ${testToken.token}`);
 
     expect(res.status).toBe(401);
@@ -32,7 +32,7 @@ describe("GET /users/me", () => {
   });
 
   it("should return 401 when no token is provided.", async () => {
-    const res = await request(app).get("/users/me");
+    const res = await request(app).get("/api/users/me");
 
     expect(res.status).toBe(401);
     expect(res.body.message).toBe("Unauthorized");
@@ -41,7 +41,7 @@ describe("GET /users/me", () => {
   it("should return user data with valid token", async () => {
     const accessToken = await createAndAuthenticateUser();
     const res = await request(app)
-      .get("/users/me")
+      .get("/api/users/me")
       .set("Authorization", `Bearer ${accessToken}`);
 
     expect(res.status).toBe(200);
@@ -53,7 +53,7 @@ describe("GET /users/me", () => {
 describe("PATCH /users/me", () => {
   it("should return 401 when token is invalid", async () => {
     const res = await request(app)
-      .patch("/users/me")
+      .patch("/api/users/me")
       .set("Authorization", `Bearer ${testToken.token}`);
 
     expect(res.status).toBe(401);
@@ -64,7 +64,7 @@ describe("PATCH /users/me", () => {
     const accessToken = await createAndAuthenticateUser();
 
     const res = await request(app)
-      .patch("/users/me")
+      .patch("/api/users/me")
       .set("Authorization", `Bearer ${accessToken}`)
       .send({ name: "A" });
 
@@ -75,7 +75,7 @@ describe("PATCH /users/me", () => {
     const accessToken = await createAndAuthenticateUser();
 
     const res = await request(app)
-      .patch("/users/me")
+      .patch("/api/users/me")
       .set("Authorization", `Bearer ${accessToken}`)
       .send({ name: "Nome Atualizado" });
 
@@ -87,7 +87,7 @@ describe("PATCH /users/me", () => {
     const accessToken = await createAndAuthenticateUser();
 
     const res = await request(app)
-      .patch("/users/me")
+      .patch("/api/users/me")
       .set("Authorization", `Bearer ${accessToken}`)
       .send({ name: "Nome Atualizado" });
 

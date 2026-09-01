@@ -12,7 +12,10 @@ export function setUnauthenticatedCallback(fn: () => void) {
 }
 
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? "http://localhost:3333",
+  // Origem única: as rotas do backend ficam sob /api. Em dev, o proxy do Vite
+  // (vite.config.ts) encaminha /api -> localhost:3333. Em produção, o próprio
+  // Express serve a SPA e a API no mesmo domínio.
+  baseURL: import.meta.env.VITE_API_URL ?? "/api",
   withCredentials: true,
 });
 

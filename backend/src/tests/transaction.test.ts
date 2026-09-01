@@ -32,7 +32,7 @@ const user2 = {
 
 describe("POST /transactions", () => {
   it("should return 401 when no token is provided", async () => {
-    const res = await request(app).post("/transactions").send(validTransaction);
+    const res = await request(app).post("/api/transactions").send(validTransaction);
 
     expect(res.status).toBe(401);
   });
@@ -41,7 +41,7 @@ describe("POST /transactions", () => {
     const accessToken = await createAndAuthenticateUser();
 
     const res = await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken}`)
       .send({ amount: -10, type: "INVALID", description: "ok" });
 
@@ -52,7 +52,7 @@ describe("POST /transactions", () => {
     const accessToken = await createAndAuthenticateUser();
 
     const res = await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken}`)
       .send(validTransaction);
 
@@ -69,7 +69,7 @@ describe("POST /transactions", () => {
     const accessToken = await createAndAuthenticateUser();
 
     const res = await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken}`)
       .send({ amount: 49.9, type: "EXPENSE" });
 
@@ -80,7 +80,7 @@ describe("POST /transactions", () => {
 
 describe("GET /transactions", () => {
   it("should return 401 when no token is provided", async () => {
-    const res = await request(app).get("/transactions");
+    const res = await request(app).get("/api/transactions");
 
     expect(res.status).toBe(401);
   });
@@ -89,7 +89,7 @@ describe("GET /transactions", () => {
     const accessToken = await createAndAuthenticateUser();
 
     const res = await request(app)
-      .get("/transactions")
+      .get("/api/transactions")
       .set("Authorization", `Bearer ${accessToken}`);
 
     expect(res.status).toBe(200);
@@ -100,12 +100,12 @@ describe("GET /transactions", () => {
     const accessToken = await createAndAuthenticateUser();
 
     await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken}`)
       .send(validTransaction);
 
     const res = await request(app)
-      .get("/transactions")
+      .get("/api/transactions")
       .set("Authorization", `Bearer ${accessToken}`);
 
     expect(res.status).toBe(200);
@@ -116,14 +116,14 @@ describe("GET /transactions", () => {
     const accessToken = await createAndAuthenticateUser();
 
     await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken}`)
       .send(validTransaction);
 
     const now = new Date();
     const res = await request(app)
       .get(
-        `/transactions?month=${now.getMonth() + 1}&year=${now.getFullYear()}`,
+        `/api/transactions?month=${now.getMonth() + 1}&year=${now.getFullYear()}`,
       )
       .set("Authorization", `Bearer ${accessToken}`);
 
@@ -135,12 +135,12 @@ describe("GET /transactions", () => {
     const accessToken = await createAndAuthenticateUser();
 
     await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken}`)
       .send(validTransaction);
 
     const res = await request(app)
-      .get("/transactions?month=1&year=2000")
+      .get("/api/transactions?month=1&year=2000")
       .set("Authorization", `Bearer ${accessToken}`);
 
     expect(res.status).toBe(200);
@@ -156,12 +156,12 @@ describe("GET /transactions", () => {
     });
 
     await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken1}`)
       .send(validTransaction);
 
     const res = await request(app)
-      .get("/transactions")
+      .get("/api/transactions")
       .set("Authorization", `Bearer ${accessToken2}`);
 
     expect(res.status).toBe(200);
@@ -172,7 +172,7 @@ describe("GET /transactions", () => {
 describe("PATCH /transactions/:id", () => {
   it("should return 401 when no token is provided", async () => {
     const res = await request(app)
-      .patch("/transactions/550e8400-e29b-41d4-a716-446655440000")
+      .patch("/api/transactions/550e8400-e29b-41d4-a716-446655440000")
       .send({ description: "Updated" });
 
     expect(res.status).toBe(401);
@@ -182,7 +182,7 @@ describe("PATCH /transactions/:id", () => {
     const accessToken = await createAndAuthenticateUser();
 
     const res = await request(app)
-      .patch("/transactions/abc")
+      .patch("/api/transactions/abc")
       .set("Authorization", `Bearer ${accessToken}`)
       .send({ description: "Updated" });
 
@@ -193,12 +193,12 @@ describe("PATCH /transactions/:id", () => {
     const accessToken = await createAndAuthenticateUser();
 
     const createRes = await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken}`)
       .send(validTransaction);
 
     const res = await request(app)
-      .patch(`/transactions/${createRes.body.transaction.id}`)
+      .patch(`/api/transactions/${createRes.body.transaction.id}`)
       .set("Authorization", `Bearer ${accessToken}`)
       .send({ amount: -50, type: "INVALID" });
 
@@ -209,7 +209,7 @@ describe("PATCH /transactions/:id", () => {
     const accessToken = await createAndAuthenticateUser();
 
     const res = await request(app)
-      .patch("/transactions/550e8400-e29b-41d4-a716-446655440000")
+      .patch("/api/transactions/550e8400-e29b-41d4-a716-446655440000")
       .set("Authorization", `Bearer ${accessToken}`)
       .send({ description: "Updated" });
 
@@ -221,12 +221,12 @@ describe("PATCH /transactions/:id", () => {
     const accessToken2 = await createAndAuthenticateUser(user2);
 
     const createRes = await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken1}`)
       .send(validTransaction);
 
     const res = await request(app)
-      .patch(`/transactions/${createRes.body.transaction.id}`)
+      .patch(`/api/transactions/${createRes.body.transaction.id}`)
       .set("Authorization", `Bearer ${accessToken2}`)
       .send({ description: "Trying to update" });
 
@@ -242,17 +242,17 @@ describe("PATCH /transactions/:id", () => {
     });
 
     const categoriesRes = await request(app)
-      .get("/categories")
+      .get("/api/categories")
       .set("Authorization", `Bearer ${accessToken2}`);
     const otherUserCategory = categoriesRes.body.categories[0];
 
     const transactionRes = await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken1}`)
       .send(validTransaction);
 
     const res = await request(app)
-      .patch(`/transactions/${transactionRes.body.transaction.id}`)
+      .patch(`/api/transactions/${transactionRes.body.transaction.id}`)
       .set("Authorization", `Bearer ${accessToken1}`)
       .send({ categoryId: otherUserCategory.id });
 
@@ -263,12 +263,12 @@ describe("PATCH /transactions/:id", () => {
     const accessToken = await createAndAuthenticateUser();
 
     const createRes = await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken}`)
       .send(validTransaction);
 
     const res = await request(app)
-      .patch(`/transactions/${createRes.body.transaction.id}`)
+      .patch(`/api/transactions/${createRes.body.transaction.id}`)
       .set("Authorization", `Bearer ${accessToken}`)
       .send({ description: "Mercado Novo", amount: 99.9 });
 
@@ -286,12 +286,12 @@ describe("PATCH /transactions/:id", () => {
     const accessToken = await createAndAuthenticateUser();
 
     const createRes = await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken}`)
       .send(validTransaction);
 
     const res = await request(app)
-      .patch(`/transactions/${createRes.body.transaction.id}`)
+      .patch(`/api/transactions/${createRes.body.transaction.id}`)
       .set("Authorization", `Bearer ${accessToken}`)
       .send({ type: "INCOME" });
 
@@ -308,7 +308,7 @@ describe("GET /transactions/:id", () => {
     const accessToken = await createAndAuthenticateUser();
 
     const res = await request(app)
-      .get("/transactions/abc")
+      .get("/api/transactions/abc")
       .set("Authorization", `Bearer ${accessToken}`);
 
     expect(res.status).toBe(400);
@@ -318,7 +318,7 @@ describe("GET /transactions/:id", () => {
     const accessToken = await createAndAuthenticateUser();
 
     const res = await request(app)
-      .get("/transactions/550e8400-e29b-41d4-a716-446655440000")
+      .get("/api/transactions/550e8400-e29b-41d4-a716-446655440000")
       .set("Authorization", `Bearer ${accessToken}`);
 
     expect(res.status).toBe(404);
@@ -329,12 +329,12 @@ describe("GET /transactions/:id", () => {
     const accessToken2 = await createAndAuthenticateUser(user2);
 
     const res1 = await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken1}`)
       .send(validTransaction);
 
     const res2 = await request(app)
-      .get(`/transactions/${res1.body.transaction.id}`)
+      .get(`/api/transactions/${res1.body.transaction.id}`)
       .set("Authorization", `Bearer ${accessToken2}`);
 
     expect(res2.status).toBe(404);
@@ -344,12 +344,12 @@ describe("GET /transactions/:id", () => {
     const accessToken = await createAndAuthenticateUser();
 
     const res = await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken}`)
       .send(validTransaction);
 
     const res2 = await request(app)
-      .get(`/transactions/${res.body.transaction.id}`)
+      .get(`/api/transactions/${res.body.transaction.id}`)
       .set("Authorization", `Bearer ${accessToken}`);
 
     expect(res2.status).toBe(200);
@@ -370,7 +370,7 @@ describe("DELETE /transactions/:id", () => {
     const accessToken = await createAndAuthenticateUser();
 
     const res = await request(app)
-      .delete("/transactions/abc")
+      .delete("/api/transactions/abc")
       .set("Authorization", `Bearer ${accessToken}`);
 
     expect(res.status).toBe(400);
@@ -380,7 +380,7 @@ describe("DELETE /transactions/:id", () => {
     const accessToken = await createAndAuthenticateUser();
 
     const res = await request(app)
-      .delete("/transactions/550e8400-e29b-41d4-a716-446655440000")
+      .delete("/api/transactions/550e8400-e29b-41d4-a716-446655440000")
       .set("Authorization", `Bearer ${accessToken}`);
 
     expect(res.status).toBe(404);
@@ -391,12 +391,12 @@ describe("DELETE /transactions/:id", () => {
     const accessToken2 = await createAndAuthenticateUser(user2);
 
     const res1 = await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken1}`)
       .send(validTransaction);
 
     const res2 = await request(app)
-      .delete(`/transactions/${res1.body.transaction.id}`)
+      .delete(`/api/transactions/${res1.body.transaction.id}`)
       .set("Authorization", `Bearer ${accessToken2}`);
 
     expect(res2.status).toBe(404);
@@ -406,12 +406,12 @@ describe("DELETE /transactions/:id", () => {
     const accessToken = await createAndAuthenticateUser();
 
     const res1 = await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken}`)
       .send(validTransaction);
 
     const res2 = await request(app)
-      .delete(`/transactions/${res1.body.transaction.id}`)
+      .delete(`/api/transactions/${res1.body.transaction.id}`)
       .set("Authorization", `Bearer ${accessToken}`);
 
     expect(res2.status).toBe(200);
@@ -420,7 +420,7 @@ describe("DELETE /transactions/:id", () => {
 
 describe("GET /transactions/summary", () => {
   it("should return 401 when no token is provided", async () => {
-    const res = await request(app).get("/transactions/summary");
+    const res = await request(app).get("/api/transactions/summary");
 
     expect(res.status).toBe(401);
   });
@@ -429,7 +429,7 @@ describe("GET /transactions/summary", () => {
     const accessToken = await createAndAuthenticateUser();
 
     const res = await request(app)
-      .get("/transactions/summary")
+      .get("/api/transactions/summary")
       .set("Authorization", `Bearer ${accessToken}`);
 
     expect(res.status).toBe(200);
@@ -440,17 +440,17 @@ describe("GET /transactions/summary", () => {
     const accessToken = await createAndAuthenticateUser();
 
     await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken}`)
       .send({ amount: 100, type: "INCOME", description: "Salário" });
 
     await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken}`)
       .send({ amount: 40, type: "EXPENSE", description: "Mercado" });
 
     const res = await request(app)
-      .get("/transactions/summary")
+      .get("/api/transactions/summary")
       .set("Authorization", `Bearer ${accessToken}`);
 
     expect(res.status).toBe(200);
@@ -461,14 +461,14 @@ describe("GET /transactions/summary", () => {
     const accessToken = await createAndAuthenticateUser();
 
     await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken}`)
       .send({ amount: 200, type: "INCOME", description: "Salário" });
 
     const now = new Date();
     const res = await request(app)
       .get(
-        `/transactions/summary?month=${now.getMonth() + 1}&year=${now.getFullYear()}`,
+        `/api/transactions/summary?month=${now.getMonth() + 1}&year=${now.getFullYear()}`,
       )
       .set("Authorization", `Bearer ${accessToken}`);
 
@@ -480,12 +480,12 @@ describe("GET /transactions/summary", () => {
     const accessToken = await createAndAuthenticateUser();
 
     await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken}`)
       .send({ amount: 200, type: "INCOME", description: "Salário" });
 
     const res = await request(app)
-      .get("/transactions/summary?month=1&year=2000")
+      .get("/api/transactions/summary?month=1&year=2000")
       .set("Authorization", `Bearer ${accessToken}`);
 
     expect(res.status).toBe(200);
@@ -497,12 +497,12 @@ describe("GET /transactions/summary", () => {
     const accessToken2 = await createAndAuthenticateUser(user2);
 
     await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken2}`)
       .send({ amount: 500, type: "INCOME", description: "Renda outro user" });
 
     const res = await request(app)
-      .get("/transactions/summary")
+      .get("/api/transactions/summary")
       .set("Authorization", `Bearer ${accessToken1}`);
 
     expect(res.status).toBe(200);
@@ -512,7 +512,7 @@ describe("GET /transactions/summary", () => {
 
 describe("GET /transactions/summary/by-category", () => {
   it("should return 401 when no token is provided", async () => {
-    const res = await request(app).get("/transactions/summary/by-category");
+    const res = await request(app).get("/api/transactions/summary/by-category");
 
     expect(res.status).toBe(401);
   });
@@ -521,7 +521,7 @@ describe("GET /transactions/summary/by-category", () => {
     const accessToken = await createAndAuthenticateUser();
 
     const res = await request(app)
-      .get("/transactions/summary/by-category")
+      .get("/api/transactions/summary/by-category")
       .set("Authorization", `Bearer ${accessToken}`);
 
     expect(res.status).toBe(200);
@@ -532,14 +532,14 @@ describe("GET /transactions/summary/by-category", () => {
     const accessToken = await createAndAuthenticateUser();
 
     const categoriesRes = await request(app)
-      .get("/categories")
+      .get("/api/categories")
       .set("Authorization", `Bearer ${accessToken}`);
     const expenseCategory = categoriesRes.body.categories.find(
       (c: { type: string }) => c.type === "EXPENSE",
     );
 
     await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken}`)
       .send({
         amount: 40,
@@ -549,7 +549,7 @@ describe("GET /transactions/summary/by-category", () => {
       });
 
     const res = await request(app)
-      .get("/transactions/summary/by-category")
+      .get("/api/transactions/summary/by-category")
       .set("Authorization", `Bearer ${accessToken}`);
 
     expect(res.status).toBe(200);
@@ -573,14 +573,14 @@ describe("GET /transactions/summary/by-category", () => {
     const accessToken = await createAndAuthenticateUser();
 
     const categoriesRes = await request(app)
-      .get("/categories")
+      .get("/api/categories")
       .set("Authorization", `Bearer ${accessToken}`);
     const incomeCategory = categoriesRes.body.categories.find(
       (c: { type: string }) => c.type === "INCOME",
     );
 
     await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken}`)
       .send({
         amount: 5000,
@@ -590,7 +590,7 @@ describe("GET /transactions/summary/by-category", () => {
       });
 
     const res = await request(app)
-      .get("/transactions/summary/by-category")
+      .get("/api/transactions/summary/by-category")
       .set("Authorization", `Bearer ${accessToken}`);
 
     expect(res.status).toBe(200);

@@ -62,7 +62,7 @@ describe("POST /groups", () => {
   it("should create a family group and return 201", async () => {
     const accessToken = await createAndAuthenticateUser();
     const res = await request(app)
-      .post("/groups")
+      .post("/api/groups")
       .set("Authorization", `Bearer ${accessToken}`)
       .send(testFamilyGroup);
 
@@ -79,11 +79,11 @@ describe("POST /groups", () => {
   it("should return 409 when user already belongs to a group", async () => {
     const accessToken = await createAndAuthenticateUser();
     await request(app)
-      .post("/groups")
+      .post("/api/groups")
       .set("Authorization", `Bearer ${accessToken}`)
       .send(testFamilyGroup);
     const res = await request(app)
-      .post("/groups")
+      .post("/api/groups")
       .set("Authorization", `Bearer ${accessToken}`)
       .send(testFamilyGroup);
 
@@ -93,7 +93,7 @@ describe("POST /groups", () => {
   it("should return 400 when name is invalid", async () => {
     const accessToken = await createAndAuthenticateUser();
     const res = await request(app)
-      .post("/groups")
+      .post("/api/groups")
       .set("Authorization", `Bearer ${accessToken}`)
       .send({ name: "A" });
 
@@ -101,7 +101,7 @@ describe("POST /groups", () => {
   });
 
   it("should return 401 when no token is provided", async () => {
-    const res = await request(app).post("/groups").send(testFamilyGroup);
+    const res = await request(app).post("/api/groups").send(testFamilyGroup);
 
     expect(res.status).toBe(401);
   });
@@ -111,7 +111,7 @@ describe("POST /groups/join", () => {
   it("should return 400 when inviteCode is missing", async () => {
     const accessToken = await createAndAuthenticateUser();
     const res = await request(app)
-      .post("/groups/join")
+      .post("/api/groups/join")
       .set("Authorization", `Bearer ${accessToken}`)
       .send({ name: "OT" });
 
@@ -121,11 +121,11 @@ describe("POST /groups/join", () => {
   it("should return 409 when user already belongs to a group", async () => {
     const accessToken = await createAndAuthenticateUser();
     await request(app)
-      .post("/groups")
+      .post("/api/groups")
       .set("Authorization", `Bearer ${accessToken}`)
       .send(testFamilyGroup);
     const res = await request(app)
-      .post("/groups/join")
+      .post("/api/groups/join")
       .set("Authorization", `Bearer ${accessToken}`)
       .send(testInviteCode);
 
@@ -135,7 +135,7 @@ describe("POST /groups/join", () => {
   it("should return 404 when inviteCode does not exist", async () => {
     const accessToken = await createAndAuthenticateUser();
     const res = await request(app)
-      .post("/groups/join")
+      .post("/api/groups/join")
       .set("Authorization", `Bearer ${accessToken}`)
       .send(testInviteCode);
 
@@ -145,12 +145,12 @@ describe("POST /groups/join", () => {
   it("should return 200 and join the group successfully", async () => {
     const accessToken1 = await createAndAuthenticateUser();
     const groupRes = await request(app)
-      .post("/groups")
+      .post("/api/groups")
       .set("Authorization", `Bearer ${accessToken1}`)
       .send(testFamilyGroup);
     const accessToken2 = await createAndAuthenticateUser(user2);
     const res = await request(app)
-      .post("/groups/join")
+      .post("/api/groups/join")
       .set("Authorization", `Bearer ${accessToken2}`)
       .send({ inviteCode: groupRes.body.group.inviteCode });
     expect(res.status).toBe(200);
@@ -159,19 +159,19 @@ describe("POST /groups/join", () => {
   it("should regenerate inviteCode after join", async () => {
     const accessToken1 = await createAndAuthenticateUser();
     const groupRes = await request(app)
-      .post("/groups")
+      .post("/api/groups")
       .set("Authorization", `Bearer ${accessToken1}`)
       .send(testFamilyGroup);
     const originalInviteCode = groupRes.body.group.inviteCode;
 
     const accessToken2 = await createAndAuthenticateUser(user2);
     await request(app)
-      .post("/groups/join")
+      .post("/api/groups/join")
       .set("Authorization", `Bearer ${accessToken2}`)
       .send({ inviteCode: originalInviteCode });
 
     const inviteRes = await request(app)
-      .get("/groups/invite")
+      .get("/api/groups/invite")
       .set("Authorization", `Bearer ${accessToken1}`);
 
     expect(inviteRes.status).toBe(200);
@@ -181,7 +181,7 @@ describe("POST /groups/join", () => {
   it("should return 409 when group is already full", async () => {
     const accessToken1 = await createAndAuthenticateUser();
     const groupRes = await request(app)
-      .post("/groups")
+      .post("/api/groups")
       .set("Authorization", `Bearer ${accessToken1}`)
       .send(testFamilyGroup);
 
@@ -191,19 +191,19 @@ describe("POST /groups/join", () => {
     for (const member of [user2, user3, user4, user5]) {
       const memberToken = await createAndAuthenticateUser(member);
       await request(app)
-        .post("/groups/join")
+        .post("/api/groups/join")
         .set("Authorization", `Bearer ${memberToken}`)
         .send({ inviteCode });
 
       const inviteRes = await request(app)
-        .get("/groups/invite")
+        .get("/api/groups/invite")
         .set("Authorization", `Bearer ${accessToken1}`);
       inviteCode = inviteRes.body.inviteCode;
     }
 
     const accessToken6 = await createAndAuthenticateUser(user6);
     const res = await request(app)
-      .post("/groups/join")
+      .post("/api/groups/join")
       .set("Authorization", `Bearer ${accessToken6}`)
       .send({ inviteCode });
 
@@ -213,7 +213,7 @@ describe("POST /groups/join", () => {
 
 describe("GET /groups/invite", () => {
   it("should return 401 when no token is provided", async () => {
-    const res = await request(app).get("/groups/invite");
+    const res = await request(app).get("/api/groups/invite");
 
     expect(res.status).toBe(401);
   });
@@ -221,7 +221,7 @@ describe("GET /groups/invite", () => {
   it("should return 404 when user has no group", async () => {
     const accessToken = await createAndAuthenticateUser();
     const res = await request(app)
-      .get("/groups/invite")
+      .get("/api/groups/invite")
       .set("Authorization", `Bearer ${accessToken}`);
 
     expect(res.status).toBe(404);
@@ -230,12 +230,12 @@ describe("GET /groups/invite", () => {
   it("should return 200 with inviteCode", async () => {
     const accessToken = await createAndAuthenticateUser();
     await request(app)
-      .post("/groups")
+      .post("/api/groups")
       .set("Authorization", `Bearer ${accessToken}`)
       .send(testFamilyGroup);
 
     const res = await request(app)
-      .get("/groups/invite")
+      .get("/api/groups/invite")
       .set("Authorization", `Bearer ${accessToken}`);
 
     expect(res.status).toBe(200);
@@ -247,7 +247,7 @@ describe("GET /groups/invite", () => {
 
 describe("GET /groups", () => {
   it("should return 401 when no token is provided", async () => {
-    const res = await request(app).get("/groups");
+    const res = await request(app).get("/api/groups");
 
     expect(res.status).toBe(401);
   });
@@ -255,7 +255,7 @@ describe("GET /groups", () => {
   it("should return 404 when FamilyGroup does not exist", async () => {
     const accessToken = await createAndAuthenticateUser();
     const res = await request(app)
-      .get("/groups")
+      .get("/api/groups")
       .set("Authorization", `Bearer ${accessToken}`);
 
     expect(res.status).toBe(404);
@@ -264,16 +264,16 @@ describe("GET /groups", () => {
   it("should return 200 and group  + users", async () => {
     const accessToken1 = await createAndAuthenticateUser();
     const groupRes = await request(app)
-      .post("/groups")
+      .post("/api/groups")
       .set("Authorization", `Bearer ${accessToken1}`)
       .send(testFamilyGroup);
     const accessToken2 = await createAndAuthenticateUser(user2);
     await request(app)
-      .post("/groups/join")
+      .post("/api/groups/join")
       .set("Authorization", `Bearer ${accessToken2}`)
       .send({ inviteCode: groupRes.body.group.inviteCode });
     const getGroup = await request(app)
-      .get("/groups")
+      .get("/api/groups")
       .set("Authorization", `Bearer ${accessToken1}`);
 
     expect(getGroup.status).toBe(200);
@@ -302,13 +302,13 @@ const validTransaction = {
 async function createGroupWithTwoMembers() {
   const accessToken1 = await createAndAuthenticateUser();
   const groupRes = await request(app)
-    .post("/groups")
+    .post("/api/groups")
     .set("Authorization", `Bearer ${accessToken1}`)
     .send(testFamilyGroup);
 
   const accessToken2 = await createAndAuthenticateUser(user2);
   await request(app)
-    .post("/groups/join")
+    .post("/api/groups/join")
     .set("Authorization", `Bearer ${accessToken2}`)
     .send({ inviteCode: groupRes.body.group.inviteCode });
 
@@ -317,7 +317,7 @@ async function createGroupWithTwoMembers() {
 
 describe("GET /groups/transactions", () => {
   it("should return 401 when no token is provided", async () => {
-    const res = await request(app).get("/groups/transactions");
+    const res = await request(app).get("/api/groups/transactions");
 
     expect(res.status).toBe(401);
   });
@@ -326,7 +326,7 @@ describe("GET /groups/transactions", () => {
     const accessToken = await createAndAuthenticateUser();
 
     const res = await request(app)
-      .get("/groups/transactions")
+      .get("/api/groups/transactions")
       .set("Authorization", `Bearer ${accessToken}`);
 
     expect(res.status).toBe(404);
@@ -336,7 +336,7 @@ describe("GET /groups/transactions", () => {
     const { accessToken1 } = await createGroupWithTwoMembers();
 
     const res = await request(app)
-      .get("/groups/transactions")
+      .get("/api/groups/transactions")
       .set("Authorization", `Bearer ${accessToken1}`);
 
     expect(res.status).toBe(200);
@@ -347,17 +347,17 @@ describe("GET /groups/transactions", () => {
     const { accessToken1, accessToken2 } = await createGroupWithTwoMembers();
 
     await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken1}`)
       .send(validTransaction);
 
     await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken2}`)
       .send({ ...validTransaction, description: "Conta de luz" });
 
     const res = await request(app)
-      .get("/groups/transactions")
+      .get("/api/groups/transactions")
       .set("Authorization", `Bearer ${accessToken1}`);
 
     expect(res.status).toBe(200);
@@ -369,12 +369,12 @@ describe("GET /groups/transactions", () => {
     const outsiderToken = await createAndAuthenticateUser(user3);
 
     await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${outsiderToken}`)
       .send(validTransaction);
 
     const res = await request(app)
-      .get("/groups/transactions")
+      .get("/api/groups/transactions")
       .set("Authorization", `Bearer ${accessToken1}`);
 
     expect(res.status).toBe(200);
@@ -385,14 +385,14 @@ describe("GET /groups/transactions", () => {
     const { accessToken1 } = await createGroupWithTwoMembers();
 
     await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken1}`)
       .send(validTransaction);
 
     const now = new Date();
     const res = await request(app)
       .get(
-        `/groups/transactions?month=${now.getMonth() + 1}&year=${now.getFullYear()}`,
+        `/api/groups/transactions?month=${now.getMonth() + 1}&year=${now.getFullYear()}`,
       )
       .set("Authorization", `Bearer ${accessToken1}`);
 
@@ -404,12 +404,12 @@ describe("GET /groups/transactions", () => {
     const { accessToken1 } = await createGroupWithTwoMembers();
 
     await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken1}`)
       .send(validTransaction);
 
     const res = await request(app)
-      .get("/groups/transactions?month=1&year=2000")
+      .get("/api/groups/transactions?month=1&year=2000")
       .set("Authorization", `Bearer ${accessToken1}`);
 
     expect(res.status).toBe(200);
@@ -420,12 +420,12 @@ describe("GET /groups/transactions", () => {
     const { accessToken1 } = await createGroupWithTwoMembers();
 
     await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken1}`)
       .send(validTransaction);
 
     const res = await request(app)
-      .get("/groups/transactions")
+      .get("/api/groups/transactions")
       .set("Authorization", `Bearer ${accessToken1}`);
 
     expect(res.status).toBe(200);
@@ -436,12 +436,12 @@ describe("GET /groups/transactions", () => {
     const { accessToken1 } = await createGroupWithTwoMembers();
 
     await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken1}`)
       .send(validTransaction);
 
     const res = await request(app)
-      .get("/groups/transactions")
+      .get("/api/groups/transactions")
       .set("Authorization", `Bearer ${accessToken1}`);
 
     expect(res.status).toBe(200);
@@ -454,7 +454,7 @@ describe("GET /groups/transactions", () => {
 describe("GET /groups/transactions/summary/by-category", () => {
   it("should return 401 when no token is provided", async () => {
     const res = await request(app).get(
-      "/groups/transactions/summary/by-category",
+      "/api/groups/transactions/summary/by-category",
     );
 
     expect(res.status).toBe(401);
@@ -464,7 +464,7 @@ describe("GET /groups/transactions/summary/by-category", () => {
     const accessToken = await createAndAuthenticateUser();
 
     const res = await request(app)
-      .get("/groups/transactions/summary/by-category")
+      .get("/api/groups/transactions/summary/by-category")
       .set("Authorization", `Bearer ${accessToken}`);
 
     expect(res.status).toBe(404);
@@ -474,24 +474,24 @@ describe("GET /groups/transactions/summary/by-category", () => {
     const { accessToken1, accessToken2 } = await createGroupWithTwoMembers();
 
     const categoriesRes = await request(app)
-      .get("/categories")
+      .get("/api/categories")
       .set("Authorization", `Bearer ${accessToken1}`);
     const expenseCategory = categoriesRes.body.categories.find(
       (c: { type: string }) => c.type === "EXPENSE",
     );
 
     await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken1}`)
       .send({ ...validTransaction, categoryId: expenseCategory.id });
 
     await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken2}`)
       .send(validTransaction);
 
     const res = await request(app)
-      .get("/groups/transactions/summary/by-category")
+      .get("/api/groups/transactions/summary/by-category")
       .set("Authorization", `Bearer ${accessToken1}`);
 
     expect(res.status).toBe(200);
@@ -508,7 +508,7 @@ describe("GET /groups/transactions/summary/by-category", () => {
 
 describe("GET /groups/members/spending", () => {
   it("should return 401 when no token is provided", async () => {
-    const res = await request(app).get("/groups/members/spending");
+    const res = await request(app).get("/api/groups/members/spending");
 
     expect(res.status).toBe(401);
   });
@@ -517,7 +517,7 @@ describe("GET /groups/members/spending", () => {
     const accessToken = await createAndAuthenticateUser();
 
     const res = await request(app)
-      .get("/groups/members/spending")
+      .get("/api/groups/members/spending")
       .set("Authorization", `Bearer ${accessToken}`);
 
     expect(res.status).toBe(404);
@@ -527,17 +527,17 @@ describe("GET /groups/members/spending", () => {
     const { accessToken1, accessToken2 } = await createGroupWithTwoMembers();
 
     await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken1}`)
       .send(validTransaction);
 
     await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken2}`)
       .send({ ...validTransaction, amount: 30 });
 
     const res = await request(app)
-      .get("/groups/members/spending")
+      .get("/api/groups/members/spending")
       .set("Authorization", `Bearer ${accessToken1}`);
 
     expect(res.status).toBe(200);
@@ -553,7 +553,7 @@ describe("GET /groups/members/spending", () => {
 
 describe("GET /groups/transactions/summary", () => {
   it("should return 401 when no token is provided", async () => {
-    const res = await request(app).get("/groups/transactions/summary");
+    const res = await request(app).get("/api/groups/transactions/summary");
 
     expect(res.status).toBe(401);
   });
@@ -562,7 +562,7 @@ describe("GET /groups/transactions/summary", () => {
     const accessToken = await createAndAuthenticateUser();
 
     const res = await request(app)
-      .get("/groups/transactions/summary")
+      .get("/api/groups/transactions/summary")
       .set("Authorization", `Bearer ${accessToken}`);
 
     expect(res.status).toBe(404);
@@ -572,7 +572,7 @@ describe("GET /groups/transactions/summary", () => {
     const { accessToken1 } = await createGroupWithTwoMembers();
 
     const res = await request(app)
-      .get("/groups/transactions/summary")
+      .get("/api/groups/transactions/summary")
       .set("Authorization", `Bearer ${accessToken1}`);
 
     expect(res.status).toBe(200);
@@ -583,17 +583,17 @@ describe("GET /groups/transactions/summary", () => {
     const { accessToken1, accessToken2 } = await createGroupWithTwoMembers();
 
     await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken1}`)
       .send({ amount: 100, type: "INCOME", description: "Salário user1" });
 
     await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken2}`)
       .send({ amount: 40, type: "EXPENSE", description: "Mercado user2" });
 
     const res = await request(app)
-      .get("/groups/transactions/summary")
+      .get("/api/groups/transactions/summary")
       .set("Authorization", `Bearer ${accessToken1}`);
 
     expect(res.status).toBe(200);
@@ -605,12 +605,12 @@ describe("GET /groups/transactions/summary", () => {
     const outsiderToken = await createAndAuthenticateUser(user3);
 
     await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${outsiderToken}`)
       .send({ amount: 500, type: "INCOME", description: "Renda outsider" });
 
     const res = await request(app)
-      .get("/groups/transactions/summary")
+      .get("/api/groups/transactions/summary")
       .set("Authorization", `Bearer ${accessToken1}`);
 
     expect(res.status).toBe(200);
@@ -621,14 +621,14 @@ describe("GET /groups/transactions/summary", () => {
     const { accessToken1 } = await createGroupWithTwoMembers();
 
     await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken1}`)
       .send({ amount: 200, type: "INCOME", description: "Salário" });
 
     const now = new Date();
     const res = await request(app)
       .get(
-        `/groups/transactions/summary?month=${now.getMonth() + 1}&year=${now.getFullYear()}`,
+        `/api/groups/transactions/summary?month=${now.getMonth() + 1}&year=${now.getFullYear()}`,
       )
       .set("Authorization", `Bearer ${accessToken1}`);
 
@@ -640,12 +640,12 @@ describe("GET /groups/transactions/summary", () => {
     const { accessToken1 } = await createGroupWithTwoMembers();
 
     await request(app)
-      .post("/transactions")
+      .post("/api/transactions")
       .set("Authorization", `Bearer ${accessToken1}`)
       .send({ amount: 200, type: "INCOME", description: "Salário" });
 
     const res = await request(app)
-      .get("/groups/transactions/summary?month=1&year=2000")
+      .get("/api/groups/transactions/summary?month=1&year=2000")
       .set("Authorization", `Bearer ${accessToken1}`);
 
     expect(res.status).toBe(200);
@@ -658,7 +658,7 @@ describe("DELETE /groups/leave", () => {
     const accessToken = await createAndAuthenticateUser();
 
     const res = await request(app)
-      .delete("/groups/leave")
+      .delete("/api/groups/leave")
       .set("Authorization", `Bearer ${accessToken}`);
 
     expect(res.status).toBe(404);
@@ -668,16 +668,16 @@ describe("DELETE /groups/leave", () => {
     const accessToken = await createAndAuthenticateUser();
 
     await request(app)
-      .post("/groups")
+      .post("/api/groups")
       .set("Authorization", `Bearer ${accessToken}`)
       .send(testFamilyGroup);
 
     await request(app)
-      .delete("/groups/leave")
+      .delete("/api/groups/leave")
       .set("Authorization", `Bearer ${accessToken}`);
 
     const res = await request(app)
-      .get("/groups")
+      .get("/api/groups")
       .set("Authorization", `Bearer ${accessToken}`);
 
     expect(res.status).toBe(404);
@@ -688,25 +688,25 @@ describe("DELETE /groups/leave", () => {
     const accessToken2 = await createAndAuthenticateUser(user2);
 
     await request(app)
-      .post("/groups")
+      .post("/api/groups")
       .set("Authorization", `Bearer ${accessToken1}`)
       .send(testFamilyGroup);
 
     const inviteRes = await request(app)
-      .get("/groups/invite")
+      .get("/api/groups/invite")
       .set("Authorization", `Bearer ${accessToken1}`);
 
     await request(app)
-      .post("/groups/join")
+      .post("/api/groups/join")
       .set("Authorization", `Bearer ${accessToken2}`)
       .send({ inviteCode: inviteRes.body.inviteCode });
 
     await request(app)
-      .delete("/groups/leave")
+      .delete("/api/groups/leave")
       .set("Authorization", `Bearer ${accessToken1}`);
 
     const res = await request(app)
-      .get("/groups")
+      .get("/api/groups")
       .set("Authorization", `Bearer ${accessToken2}`);
 
     expect(res.status).toBe(200);
