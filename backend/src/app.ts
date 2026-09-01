@@ -50,7 +50,12 @@ if (process.env.NODE_ENV === "production") {
       next();
       return;
     }
-    res.sendFile(path.join(clientDist, "index.html"));
+    // status 200 explícito + callback de erro: em alguns ambientes o
+    // res.statusCode chega aqui como 404 (fallthrough do express.static) e o
+    // sendFile respeita o status já setado, servindo o index.html com 404.
+    res.status(200).sendFile("index.html", { root: clientDist }, (err) => {
+      if (err) next(err);
+    });
   });
 }
 
