@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import express from "express";
 import helmet from "helmet";
@@ -41,6 +42,10 @@ app.use("/api/categories", categorieRoutes);
 // seja /api/* cai no index.html (client-side routing).
 if (process.env.NODE_ENV === "production") {
   const clientDist = path.resolve(import.meta.dirname, "../../frontend/dist");
+  // Lê o shell da SPA uma vez, em memória. Se o caminho estiver errado, o
+  // processo quebra no boot com erro claro (melhor que 404 silencioso).
+  const indexHtml = fs.readFileSync(path.join(clientDist, "index.html"), "utf-8");
+  console.log(`[spa] servindo SPA de ${clientDist}`);
 
   app.use(express.static(clientDist));
   app.use((req, res, next) => {
@@ -48,12 +53,7 @@ if (process.env.NODE_ENV === "production") {
       next();
       return;
     }
-    // status 200 explícito + callback de erro: em alguns ambientes o
-    // res.statusCode chega aqui como 404 (fallthrough do express.static) e o
-    // sendFile respeita o status já setado, servindo o index.html com 404.
-    res.status(200).sendFile("index.html", { root: clientDist }, (err) => {
-      if (err) next(err);
-    });
+    res.status(200).type("html").send(indexHtml);
   });
 }
 
