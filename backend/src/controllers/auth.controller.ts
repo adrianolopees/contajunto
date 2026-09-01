@@ -8,7 +8,10 @@ import crypto from "node:crypto";
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
-  sameSite: "strict" as const,
+  // "lax" (não "strict"): a SPA e a API compartilham origem, então o cookie
+  // já é first-party. "strict" derrubaria a sessão em navegação vinda de fora
+  // (link, e-mail, PWA aberto pela home screen em alguns browsers).
+  sameSite: "lax" as const,
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 

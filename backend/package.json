@@ -6,11 +6,12 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc",
+    "build": "prisma generate && tsc && node scripts/copy-generated.mjs",
     "start": "node dist/server.js",
     "db:up": "docker compose up -d",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand",
     "migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy && tsx prisma/seed.ts",
     "seed": "tsx prisma/seed.ts",
     "seed:test-user": "tsx prisma/seed-test-user.ts"
   },
