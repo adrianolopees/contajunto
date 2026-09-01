@@ -183,7 +183,7 @@ export function GroupDashboard() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">
-                    {member.name[0]}
+                    {member.name.split("")[0]}
                     {member.id === user?.id && " (você)"}
                   </p>
                 </div>
