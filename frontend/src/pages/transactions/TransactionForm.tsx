@@ -34,9 +34,11 @@ import {
 } from "@/services/transactions";
 import { getCategories, type Category } from "@/services/categories";
 import type { PaymentMethod } from "@/services/transactions";
+import { getCards, type Card } from "@/services/cards";
 import CategoryBadge from "@/components/CategoryBadge";
 
 const NO_CATEGORY = "none";
+const NO_CARD = "none";
 const AMOUNT_CHIPS = [50, 100, 250, 500];
 
 const PAYMENT_METHODS: {
@@ -63,6 +65,7 @@ const transactionFormSchema = z.object({
   paymentMethod: z.enum(["DEBIT", "CREDIT", "PIX", "CASH"]),
   description: z.string().max(255, "Nota muito longa"),
   categoryId: z.string().optional(),
+  cardId: z.string().optional(),
 });
 
 type TransactionFormValues = z.infer<typeof transactionFormSchema>;
@@ -74,6 +77,7 @@ export default function TransactionForm() {
 
   const [transaction, setTransaction] = useState<Transaction | undefined>();
   const [categories, setCategories] = useState<Category[]>([]);
+  const [cards, setCards] = useState<Card[]>([]);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [categorySearch, setCategorySearch] = useState("");
   const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
@@ -86,6 +90,7 @@ export default function TransactionForm() {
       paymentMethod: "DEBIT",
       description: "",
       categoryId: NO_CATEGORY,
+      cardId: NO_CARD,
     },
   });
 
@@ -95,7 +100,10 @@ export default function TransactionForm() {
     name: "paymentMethod",
   });
   const categoryId = useWatch({ control: form.control, name: "categoryId" });
+  const cardId = useWatch({ control: form.control, name: "cardId" });
   const amount = useWatch({ control: form.control, name: "amount" });
+
+  const showCardPicker = type === "EXPENSE" && paymentMethod === "CREDIT";
 
   const categoriesForType = categories.filter((c) => c.type === type);
   const selectedCategory = categoriesForType.find((c) => c.id === categoryId);
@@ -138,14 +146,30 @@ export default function TransactionForm() {
     setCategorySearch("");
   }
 
-  // categorias só precisam ser carregadas uma vez
+  // categorias e cartões só precisam ser carregados uma vez
   useEffect(() => {
-    async function fetchCategories() {
-      const data = await getCategories();
-      setCategories(data);
+    async function fetchData() {
+      const [categoriesData, cardsData] = await Promise.all([
+        getCategories(),
+        getCards(),
+      ]);
+      setCategories(categoriesData);
+      setCards(cardsData);
     }
-    fetchCategories();
+    fetchData();
   }, []);
+
+  // cartão só faz sentido no crédito: fora dele volta pra "nenhum";
+  // com um cartão só, seleciona sozinho
+  useEffect(() => {
+    if (!showCardPicker) {
+      if (cardId !== NO_CARD) form.setValue("cardId", NO_CARD);
+      return;
+    }
+    if (cardId === NO_CARD && cards.length === 1) {
+      form.setValue("cardId", cards[0].id);
+    }
+  }, [showCardPicker, cards, cardId, form]);
 
   // categoria escolhida pode não existir mais pro tipo selecionado — volta pra "sem categoria"
   useEffect(() => {
@@ -176,6 +200,7 @@ export default function TransactionForm() {
         paymentMethod: data.paymentMethod ?? "DEBIT",
         description: data.description,
         categoryId: data.categoryId ?? NO_CATEGORY,
+        cardId: data.cardId ?? NO_CARD,
       });
     }
     fetchTransaction();
@@ -196,6 +221,16 @@ export default function TransactionForm() {
         paymentMethod:
           data.type === "EXPENSE"
             ? data.paymentMethod
+            : transaction
+              ? null
+              : undefined,
+        // cartão só no crédito
+        cardId:
+          data.type === "EXPENSE" &&
+          data.paymentMethod === "CREDIT" &&
+          data.cardId &&
+          data.cardId !== NO_CARD
+            ? data.cardId
             : transaction
               ? null
               : undefined,
@@ -367,6 +402,61 @@ export default function TransactionForm() {
                 </button>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Cartão: só no crédito */}
+        {showCardPicker && (
+          <div>
+            <p className="mb-2 text-sm font-medium text-muted-foreground">
+              Cartão
+            </p>
+            {cards.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                Nenhum cartão cadastrado.{" "}
+                <Link to="/me" className="text-primary underline">
+                  Cadastrar no perfil
+                </Link>
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {cards.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() =>
+                      form.setValue("cardId", c.id, { shouldValidate: true })
+                    }
+                    className={cn(
+                      "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors",
+                      cardId === c.id
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:bg-muted",
+                    )}
+                  >
+                    <span
+                      className="size-3 rounded-full"
+                      style={{ backgroundColor: c.color }}
+                    />
+                    {c.name}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() =>
+                    form.setValue("cardId", NO_CARD, { shouldValidate: true })
+                  }
+                  className={cn(
+                    "rounded-lg border px-3 py-2 text-sm transition-colors",
+                    cardId === NO_CARD
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-muted",
+                  )}
+                >
+                  Nenhum
+                </button>
+              </div>
+            )}
           </div>
         )}
 

@@ -5,6 +5,7 @@ import { createAndAuthenticateUser } from "./helpers.js";
 
 beforeEach(async () => {
   await prisma.transaction.deleteMany();
+  await prisma.card.deleteMany();
   await prisma.category.deleteMany();
   await prisma.refreshToken.deleteMany();
   await prisma.user.deleteMany();
@@ -12,6 +13,7 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await prisma.transaction.deleteMany();
+  await prisma.card.deleteMany();
   await prisma.category.deleteMany();
   await prisma.refreshToken.deleteMany();
   await prisma.user.deleteMany();
@@ -110,6 +112,81 @@ describe("POST /transactions", () => {
       .send({ ...validTransaction, paymentMethod: "BOLETO" });
 
     expect(res.status).toBe(400);
+  });
+
+  it("should persist the card when a credit expense is sent with a cardId", async () => {
+    const accessToken = await createAndAuthenticateUser();
+    const card = await request(app)
+      .post("/api/cards")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ name: "Nubank", closingDay: 3, dueDay: 10, color: "#8b5cf6" });
+
+    const res = await request(app)
+      .post("/api/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({
+        ...validTransaction,
+        paymentMethod: "CREDIT",
+        cardId: card.body.card.id,
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.transaction.cardId).toBe(card.body.card.id);
+  });
+
+  it("should return 400 when a cardId is sent without credit payment", async () => {
+    const accessToken = await createAndAuthenticateUser();
+    const card = await request(app)
+      .post("/api/cards")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ name: "Nubank", closingDay: 3, dueDay: 10, color: "#8b5cf6" });
+
+    const res = await request(app)
+      .post("/api/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({
+        ...validTransaction,
+        paymentMethod: "DEBIT",
+        cardId: card.body.card.id,
+      });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("should return 400 when an income carries a payment method", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .post("/api/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({
+        amount: 1000,
+        type: "INCOME",
+        description: "Salário",
+        paymentMethod: "PIX",
+      });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("should return 404 when the cardId belongs to another user", async () => {
+    const accessToken = await createAndAuthenticateUser();
+    const otherToken = await createAndAuthenticateUser(user2);
+    const card = await request(app)
+      .post("/api/cards")
+      .set("Authorization", `Bearer ${otherToken}`)
+      .send({ name: "Alheio", closingDay: 5, dueDay: 12, color: "#8b5cf6" });
+
+    const res = await request(app)
+      .post("/api/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({
+        ...validTransaction,
+        paymentMethod: "CREDIT",
+        cardId: card.body.card.id,
+      });
+
+    expect(res.status).toBe(404);
   });
 });
 

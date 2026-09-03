@@ -20,6 +20,7 @@ model User {
   categories Category[]
   transactions  Transaction[]
   refreshTokens RefreshToken[]
+  cards         Card[]
 
   @@index([familyGroupId])
 }
@@ -48,6 +49,8 @@ model Transaction {
   description   String
   categoryId    String?
   category      Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  cardId        String?
+  card          Card? @relation(fields: [cardId], references: [id], onDelete: SetNull)
   date          DateTime
   month         Int
   year          Int
@@ -58,6 +61,21 @@ model Transaction {
 
   @@index([userId, year, month])
   @@index([categoryId])
+  @@index([cardId])
+}
+
+model Card {
+  id           String        @id @default(uuid())
+  name         String
+  closingDay   Int
+  dueDay       Int
+  color        String
+  createdAt    DateTime      @default(now())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@index([userId])
 }
 
 model Category {

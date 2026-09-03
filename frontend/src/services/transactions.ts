@@ -9,6 +9,7 @@ export interface Transaction {
   paymentMethod: PaymentMethod | null;
   description: string;
   categoryId: string | null;
+  cardId: string | null;
   date: string;
   month: number;
   year: number;
@@ -53,6 +54,7 @@ export async function createTransaction(data: {
   description: string;
   categoryId?: string | null;
   paymentMethod?: PaymentMethod | null;
+  cardId?: string | null;
 }): Promise<Transaction> {
   const res = await api.post("/transactions", data);
   return res.data.transaction;
@@ -79,6 +81,7 @@ export async function updateTransaction(
     description?: string;
     categoryId?: string | null;
     paymentMethod?: PaymentMethod | null;
+    cardId?: string | null;
   },
 ): Promise<Transaction> {
   const res = await api.patch(`/transactions/${id}`, data);

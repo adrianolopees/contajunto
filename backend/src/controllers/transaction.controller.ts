@@ -10,11 +10,13 @@ const transactionSchema = z.object({
   description: z.string().max(255).optional(),
   categoryId: z.uuid().optional(),
   paymentMethod: z.enum(["DEBIT", "CREDIT", "PIX", "CASH"]).optional(),
+  cardId: z.uuid().optional(),
 });
 
 const updateTransactionSchema = transactionSchema.partial().extend({
   categoryId: z.uuid().nullable().optional(),
   paymentMethod: z.enum(["DEBIT", "CREDIT", "PIX", "CASH"]).nullable().optional(),
+  cardId: z.uuid().nullable().optional(),
 });
 
 const querySchema = z.object({
@@ -22,8 +24,29 @@ const querySchema = z.object({
   year: z.coerce.number().int().optional(),
 });
 
+// crédito é a única forma de pagamento com fatura, então cartão só entra aí;
+// receita não tem forma de pagamento nem cartão
+async function checkPaymentAndCard(
+  userId: string,
+  type: "INCOME" | "EXPENSE",
+  paymentMethod: string | null | undefined,
+  cardId: string | null | undefined,
+): Promise<{ status: number; message: string } | null> {
+  if (type === "INCOME" && (paymentMethod || cardId)) {
+    return { status: 400, message: "Income has no payment method or card" };
+  }
+  if (cardId && paymentMethod !== "CREDIT") {
+    return { status: 400, message: "Card is only valid for credit payments" };
+  }
+  if (cardId) {
+    const card = await prisma.card.findFirst({ where: { id: cardId, userId } });
+    if (!card) return { status: 404, message: "Invalid card" };
+  }
+  return null;
+}
+
 export async function createTransaction(req: Request, res: Response) {
-  const { amount, type, description, categoryId, paymentMethod } =
+  const { amount, type, description, categoryId, paymentMethod, cardId } =
     transactionSchema.parse(req.body);
 
   const userId = req.user.id;
@@ -38,6 +61,17 @@ export async function createTransaction(req: Request, res: Response) {
     }
   }
 
+  const paymentError = await checkPaymentAndCard(
+    userId,
+    type,
+    paymentMethod,
+    cardId,
+  );
+  if (paymentError) {
+    res.status(paymentError.status).json({ message: paymentError.message });
+    return;
+  }
+
   const now = new Date();
   const { month, year } = getBusinessMonthYear(now);
 
@@ -49,6 +83,7 @@ export async function createTransaction(req: Request, res: Response) {
       description: description ?? "",
       categoryId,
       paymentMethod,
+      cardId,
       month,
       year,
       date: now,
@@ -102,7 +137,7 @@ export async function updateTransaction(req: Request, res: Response) {
   const transactionId = z.uuid().parse(req.params.id);
   const userId = req.user.id;
 
-  const { amount, type, description, categoryId, paymentMethod } =
+  const { amount, type, description, categoryId, paymentMethod, cardId } =
     updateTransactionSchema.parse(req.body);
 
   const transaction = await prisma.transaction.findFirst({
@@ -124,6 +159,18 @@ export async function updateTransaction(req: Request, res: Response) {
     }
   }
 
+  // valida contra o estado resultante (campo ausente = mantém o atual)
+  const paymentError = await checkPaymentAndCard(
+    userId,
+    type ?? transaction.type,
+    paymentMethod === undefined ? transaction.paymentMethod : paymentMethod,
+    cardId === undefined ? transaction.cardId : cardId,
+  );
+  if (paymentError) {
+    res.status(paymentError.status).json({ message: paymentError.message });
+    return;
+  }
+
   const updatedTransaction = await prisma.transaction.update({
     where: { id: transactionId },
     data: {
@@ -132,6 +179,7 @@ export async function updateTransaction(req: Request, res: Response) {
       description,
       categoryId,
       paymentMethod,
+      cardId,
     },
   });
   res.status(200).json({ transaction: updatedTransaction });

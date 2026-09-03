@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { updateMe } from "@/services/users";
+import CardManager from "@/components/CardManager";
 
 const profileSchema = z.object({
   name: z.string().min(2, "Nome deve ter no mínimo 2 caracteres").max(100),
@@ -61,7 +62,7 @@ export function Profile() {
   }
 
   return (
-    <div className="px-4 py-4">
+    <div className="space-y-4 px-4 py-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>Seu perfil</CardTitle>
@@ -111,6 +112,18 @@ export function Profile() {
               Salvar
             </Button>
           </form>
+        </CardContent>
+      </Card>
+
+      <Card className="w-full max-w-sm">
+        <CardHeader>
+          <CardTitle>Cartões</CardTitle>
+          <CardDescription>
+            Usados para agrupar compras no crédito por fatura
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <CardManager />
         </CardContent>
       </Card>
     </div>
