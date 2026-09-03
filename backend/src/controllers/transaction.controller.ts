@@ -9,10 +9,12 @@ const transactionSchema = z.object({
   type: z.enum(["INCOME", "EXPENSE"]),
   description: z.string().max(255).optional(),
   categoryId: z.uuid().optional(),
+  paymentMethod: z.enum(["DEBIT", "CREDIT", "PIX", "CASH"]).optional(),
 });
 
 const updateTransactionSchema = transactionSchema.partial().extend({
   categoryId: z.uuid().nullable().optional(),
+  paymentMethod: z.enum(["DEBIT", "CREDIT", "PIX", "CASH"]).nullable().optional(),
 });
 
 const querySchema = z.object({
@@ -21,9 +23,8 @@ const querySchema = z.object({
 });
 
 export async function createTransaction(req: Request, res: Response) {
-  const { amount, type, description, categoryId } = transactionSchema.parse(
-    req.body,
-  );
+  const { amount, type, description, categoryId, paymentMethod } =
+    transactionSchema.parse(req.body);
 
   const userId = req.user.id;
 
@@ -47,6 +48,7 @@ export async function createTransaction(req: Request, res: Response) {
       type,
       description: description ?? "",
       categoryId,
+      paymentMethod,
       month,
       year,
       date: now,
@@ -100,7 +102,7 @@ export async function updateTransaction(req: Request, res: Response) {
   const transactionId = z.uuid().parse(req.params.id);
   const userId = req.user.id;
 
-  const { amount, type, description, categoryId } =
+  const { amount, type, description, categoryId, paymentMethod } =
     updateTransactionSchema.parse(req.body);
 
   const transaction = await prisma.transaction.findFirst({
@@ -129,6 +131,7 @@ export async function updateTransaction(req: Request, res: Response) {
       type,
       description,
       categoryId,
+      paymentMethod,
     },
   });
   res.status(200).json({ transaction: updatedTransaction });

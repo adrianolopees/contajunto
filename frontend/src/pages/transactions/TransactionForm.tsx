@@ -5,7 +5,16 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod";
 import toast from "react-hot-toast";
 import axios from "axios";
-import { ArrowLeft, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Banknote,
+  ChevronDown,
+  ChevronUp,
+  CreditCard,
+  Landmark,
+  QrCode,
+  Trash2,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,10 +33,22 @@ import {
   type Transaction,
 } from "@/services/transactions";
 import { getCategories, type Category } from "@/services/categories";
+import type { PaymentMethod } from "@/services/transactions";
 import CategoryBadge from "@/components/CategoryBadge";
 
 const NO_CATEGORY = "none";
 const AMOUNT_CHIPS = [50, 100, 250, 500];
+
+const PAYMENT_METHODS: {
+  value: PaymentMethod;
+  label: string;
+  icon: typeof CreditCard;
+}[] = [
+  { value: "DEBIT", label: "Débito", icon: Landmark },
+  { value: "CREDIT", label: "Crédito", icon: CreditCard },
+  { value: "PIX", label: "Pix", icon: QrCode },
+  { value: "CASH", label: "Dinheiro", icon: Banknote },
+];
 
 const transactionFormSchema = z.object({
   type: z.enum(["EXPENSE", "INCOME"]),
@@ -39,6 +60,7 @@ const transactionFormSchema = z.object({
       (v) => parseFloat(v.replace(",", ".")) > 0,
       "Deve ser maior que zero",
     ),
+  paymentMethod: z.enum(["DEBIT", "CREDIT", "PIX", "CASH"]),
   description: z.string().max(255, "Nota muito longa"),
   categoryId: z.string().optional(),
 });
@@ -61,12 +83,17 @@ export default function TransactionForm() {
     defaultValues: {
       type: "EXPENSE",
       amount: "",
+      paymentMethod: "DEBIT",
       description: "",
       categoryId: NO_CATEGORY,
     },
   });
 
   const type = useWatch({ control: form.control, name: "type" });
+  const paymentMethod = useWatch({
+    control: form.control,
+    name: "paymentMethod",
+  });
   const categoryId = useWatch({ control: form.control, name: "categoryId" });
   const amount = useWatch({ control: form.control, name: "amount" });
 
@@ -146,6 +173,7 @@ export default function TransactionForm() {
       form.reset({
         type: data.type,
         amount: data.amount,
+        paymentMethod: data.paymentMethod ?? "DEBIT",
         description: data.description,
         categoryId: data.categoryId ?? NO_CATEGORY,
       });
@@ -164,6 +192,13 @@ export default function TransactionForm() {
               ? null
               : undefined
             : data.categoryId,
+        // receita não tem meio de pagamento — limpa na edição, omite na criação
+        paymentMethod:
+          data.type === "EXPENSE"
+            ? data.paymentMethod
+            : transaction
+              ? null
+              : undefined,
       };
       if (!transaction) {
         await createTransaction(payload);
@@ -303,6 +338,37 @@ export default function TransactionForm() {
             })}
           </div>
         </div>
+
+        {/* Meio de pagamento: só faz sentido pra gasto */}
+        {type === "EXPENSE" && (
+          <div>
+            <p className="mb-2 text-sm font-medium text-muted-foreground">
+              Como pagou
+            </p>
+            <div className="grid grid-cols-4 gap-2">
+              {PAYMENT_METHODS.map(({ value, label, icon: Icon }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() =>
+                    form.setValue("paymentMethod", value, {
+                      shouldValidate: true,
+                    })
+                  }
+                  className={cn(
+                    "flex flex-col items-center gap-1 rounded-lg border p-2 text-xs transition-colors",
+                    paymentMethod === value
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-muted",
+                  )}
+                >
+                  <Icon size={18} />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Categoria: busca + grupos expansíveis */}
         <div>

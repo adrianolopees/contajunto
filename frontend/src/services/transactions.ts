@@ -1,9 +1,12 @@
 import { api } from "@/lib/api";
 
+export type PaymentMethod = "DEBIT" | "CREDIT" | "PIX" | "CASH";
+
 export interface Transaction {
   id: string;
   amount: string;
   type: "INCOME" | "EXPENSE";
+  paymentMethod: PaymentMethod | null;
   description: string;
   categoryId: string | null;
   date: string;
@@ -49,6 +52,7 @@ export async function createTransaction(data: {
   type: "INCOME" | "EXPENSE";
   description: string;
   categoryId?: string | null;
+  paymentMethod?: PaymentMethod | null;
 }): Promise<Transaction> {
   const res = await api.post("/transactions", data);
   return res.data.transaction;
@@ -74,6 +78,7 @@ export async function updateTransaction(
     type?: "INCOME" | "EXPENSE";
     description?: string;
     categoryId?: string | null;
+    paymentMethod?: PaymentMethod | null;
   },
 ): Promise<Transaction> {
   const res = await api.patch(`/transactions/${id}`, data);

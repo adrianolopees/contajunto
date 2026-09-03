@@ -43,6 +43,7 @@ model Transaction {
   id            String      @id @default(uuid())
   amount        Decimal     @db.Decimal(10, 2)
   type          TransactionType
+  paymentMethod PaymentMethod?
   description   String
   categoryId    String?
   category      Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
@@ -98,4 +99,11 @@ model DefaultCategory {
 enum TransactionType {
   INCOME
   EXPENSE
+}
+
+enum PaymentMethod {
+  DEBIT
+  CREDIT
+  PIX
+  CASH
 }

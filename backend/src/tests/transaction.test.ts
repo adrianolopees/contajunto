@@ -76,6 +76,41 @@ describe("POST /transactions", () => {
     expect(res.status).toBe(201);
     expect(res.body.transaction.description).toBe("");
   });
+
+  it("should return 201 and persist the payment method", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .post("/api/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ ...validTransaction, paymentMethod: "CREDIT" });
+
+    expect(res.status).toBe(201);
+    expect(res.body.transaction.paymentMethod).toBe("CREDIT");
+  });
+
+  it("should return 201 with null payment method when none is sent", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .post("/api/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send(validTransaction);
+
+    expect(res.status).toBe(201);
+    expect(res.body.transaction.paymentMethod).toBeNull();
+  });
+
+  it("should return 400 when payment method is not a known value", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .post("/api/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ ...validTransaction, paymentMethod: "BOLETO" });
+
+    expect(res.status).toBe(400);
+  });
 });
 
 describe("GET /transactions", () => {
@@ -300,6 +335,40 @@ describe("PATCH /transactions/:id", () => {
     expect(res.body.transaction.description).toBe(
       validTransaction.description,
     );
+  });
+
+  it("should update the payment method", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const createRes = await request(app)
+      .post("/api/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ ...validTransaction, paymentMethod: "DEBIT" });
+
+    const res = await request(app)
+      .patch(`/api/transactions/${createRes.body.transaction.id}`)
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ paymentMethod: "PIX" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.transaction.paymentMethod).toBe("PIX");
+  });
+
+  it("should clear the payment method when sent as null", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const createRes = await request(app)
+      .post("/api/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ ...validTransaction, paymentMethod: "CREDIT" });
+
+    const res = await request(app)
+      .patch(`/api/transactions/${createRes.body.transaction.id}`)
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ paymentMethod: null });
+
+    expect(res.status).toBe(200);
+    expect(res.body.transaction.paymentMethod).toBeNull();
   });
 });
 
