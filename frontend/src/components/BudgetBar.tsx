@@ -5,76 +5,46 @@ import { formatCurrency } from "@/lib/format";
 interface BudgetBarProps {
   spent: number;
   budget: number | null;
-  isCurrentMonth: boolean;
 }
 
-export default function BudgetBar({
-  spent,
-  budget,
-  isCurrentMonth,
-}: BudgetBarProps) {
+// renderizado dentro do card de saldo (bg-primary), por isso texto branco / trilho translúcido
+export default function BudgetBar({ spent, budget }: BudgetBarProps) {
   if (budget === null) {
     return (
-      <Link
-        to="/me"
-        className="flex items-center justify-between rounded-xl border border-dashed p-3 text-sm text-muted-foreground"
-      >
-        <span>Defina um teto de gastos pro mês</span>
-        <span className="font-medium text-primary">Definir</span>
+      <Link to="/me" className="block text-xs underline opacity-80">
+        Definir teto de gastos do mês
       </Link>
     );
   }
 
   const ratio = budget > 0 ? spent / budget : 0;
   const remaining = budget - spent;
+  const isOver = remaining < 0;
 
-  const fillColor =
-    ratio >= 1 ? "bg-expense" : ratio >= 0.8 ? "bg-amber-500" : "bg-income";
-
-  const now = new Date();
-  const dayOfMonth = now.getDate();
-  const daysInMonth = new Date(
-    now.getFullYear(),
-    now.getMonth() + 1,
-    0,
-  ).getDate();
-  const projection =
-    isCurrentMonth && dayOfMonth >= 3
-      ? (spent / dayOfMonth) * daysInMonth
-      : null;
+  const fill = isOver
+    ? "bg-red-300"
+    : ratio >= 0.8
+      ? "bg-amber-300"
+      : "bg-white/90";
 
   return (
-    <div className="rounded-xl border p-3">
-      <div className="mb-2 flex items-baseline justify-between text-sm">
-        <span className="font-medium">Teto do mês</span>
-        <span className="text-muted-foreground">
-          {formatCurrency(spent)} de {formatCurrency(budget)}
-        </span>
-      </div>
-      <div className="h-2 overflow-hidden rounded-full bg-muted">
+    <div className="space-y-1">
+      <div className="h-2 overflow-hidden rounded-full bg-white/20">
         <div
-          className={cn("h-full rounded-full transition-all", fillColor)}
+          className={cn("h-full rounded-full transition-all", fill)}
           style={{ width: `${Math.min(ratio * 100, 100)}%` }}
         />
       </div>
-      <div className="mt-1.5 flex items-center justify-between text-xs">
-        <span
-          className={cn(
-            remaining < 0
-              ? "font-medium text-expense"
-              : "text-muted-foreground",
-          )}
-        >
-          {remaining >= 0
-            ? `Faltam ${formatCurrency(remaining)}`
-            : `${formatCurrency(-remaining)} acima`}
-        </span>
-        {projection !== null && (
-          <span className="text-muted-foreground">
-            Projeção: {formatCurrency(projection)}
-          </span>
-        )}
-      </div>
+      <p className="text-xs opacity-80">
+        {formatCurrency(spent)} de {formatCurrency(budget)}
+      </p>
+      <p
+        className={cn("text-xs", isOver ? "font-semibold" : "opacity-80")}
+      >
+        {isOver
+          ? `${formatCurrency(-remaining)} acima`
+          : `Faltam ${formatCurrency(remaining)}`}
+      </p>
     </div>
   );
 }

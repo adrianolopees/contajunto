@@ -69,9 +69,9 @@ export default function Dashboard() {
     (Transaction | GroupTransaction)[]
   >([]);
   const [summary, setSummary] = useState<TransactionsSummary | null>(null);
-  const [categorySpending, setCategorySpending] = useState<
-    CategorySpending[]
-  >([]);
+  const [categorySpending, setCategorySpending] = useState<CategorySpending[]>(
+    [],
+  );
   const [memberSpending, setMemberSpending] = useState<MemberSpending[]>([]);
   const [expandedMemberCategoryId, setExpandedMemberCategoryId] = useState<
     string | null
@@ -139,6 +139,30 @@ export default function Dashboard() {
   const isCurrentMonth =
     month === now.getMonth() + 1 && year === now.getFullYear();
 
+  // aviso de ritmo: extrapola o gasto do mês pelo ritmo diário atual.
+  // só a partir do dia 10 — antes disso o multiplicador (dias/dia) distorce demais.
+  const monthlyBudget = user?.monthlyBudget ? Number(user.monthlyBudget) : null;
+  const monthExpense = summary?.expense ?? 0;
+  let paceOverBudget: number | null = null;
+  if (
+    view === "personal" &&
+    isCurrentMonth &&
+    monthlyBudget !== null &&
+    monthExpense > 0 &&
+    monthExpense <= monthlyBudget &&
+    now.getDate() >= 10
+  ) {
+    const daysInMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      0,
+    ).getDate();
+    const projected = (monthExpense / now.getDate()) * daysInMonth;
+    if (projected > monthlyBudget) {
+      paceOverBudget = Math.round((projected - monthlyBudget) / 50) * 50;
+    }
+  }
+
   return (
     <div className="space-y-4 px-4 py-4 pb-24">
       <div>
@@ -188,6 +212,9 @@ export default function Dashboard() {
               {formatCurrency(summary?.balance ?? 0)}
             </p>
           </div>
+          {view === "personal" && (
+            <BudgetBar spent={summary?.expense ?? 0} budget={monthlyBudget} />
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-lg bg-white/10 p-2">
               <p className="text-xs opacity-80">Entradas</p>
@@ -205,12 +232,11 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
-      {view === "personal" && (
-        <BudgetBar
-          spent={summary?.expense ?? 0}
-          budget={user?.monthlyBudget ? Number(user.monthlyBudget) : null}
-          isCurrentMonth={isCurrentMonth}
-        />
+      {paceOverBudget !== null && (
+        <p className="-mt-2 px-1 text-xs text-amber-600 dark:text-amber-500">
+          No ritmo atual, você fecha o mês ~{formatCurrency(paceOverBudget)}{" "}
+          acima do teto.
+        </p>
       )}
 
       {view === "family" && group && (
@@ -298,8 +324,7 @@ export default function Dashboard() {
                   );
                 }
 
-                const isMemberExpanded =
-                  expandedMemberCategoryId === item.id;
+                const isMemberExpanded = expandedMemberCategoryId === item.id;
                 const ownerName = group?.users
                   .find((member) => member.id === item.userId)
                   ?.name.split(" ")[0];
