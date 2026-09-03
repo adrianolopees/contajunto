@@ -2,7 +2,7 @@ import { Outlet, NavLink, Link } from "react-router-dom";
 import {
   LayoutDashboard,
   Plus,
-  Tags,
+  Receipt,
   Users,
   User,
   LogOut,
@@ -165,7 +165,7 @@ export default function AppShell() {
           )}
         </NavLink>
 
-        <NavLink to="/categories" className="flex flex-col items-center">
+        <NavLink to="/bills" className="flex flex-col items-center">
           {({ isActive }) => (
             <div
               className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-[16px] ${
@@ -174,8 +174,8 @@ export default function AppShell() {
                   : "text-muted-foreground"
               }`}
             >
-              <Tags size={20} />
-              <span className="text-xs">Categorias</span>
+              <Receipt size={20} />
+              <span className="text-xs">A pagar</span>
             </div>
           )}
         </NavLink>

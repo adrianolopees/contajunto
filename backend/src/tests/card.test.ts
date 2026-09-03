@@ -2,6 +2,7 @@ import request from "supertest";
 import app from "../app.js";
 import prisma from "../lib/prisma.js";
 import { createAndAuthenticateUser } from "./helpers.js";
+import { getBusinessMonthYear } from "../lib/date.js";
 
 beforeEach(async () => {
   await prisma.transaction.deleteMany();
@@ -218,5 +219,100 @@ describe("DELETE /cards/:id", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.transaction.cardId).toBeNull();
+  });
+});
+
+describe("GET /cards/bills", () => {
+  it("should return 401 when no token is provided", async () => {
+    const res = await request(app).get("/api/cards/bills");
+    expect(res.status).toBe(401);
+  });
+
+  it("should return an empty result for a user with no cards", async () => {
+    const token = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .get("/api/cards/bills")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ bills: [], totalDue: 0 });
+  });
+
+  it("should only total credit expenses tagged to the card", async () => {
+    const token = await createAndAuthenticateUser();
+    const card = await request(app)
+      .post("/api/cards")
+      .set("Authorization", `Bearer ${token}`)
+      .send(validCard);
+    const cardId = card.body.card.id;
+
+    await request(app)
+      .post("/api/transactions")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        amount: 150,
+        type: "EXPENSE",
+        description: "Compra crédito",
+        paymentMethod: "CREDIT",
+        cardId,
+      });
+    // à vista: não entra em fatura
+    await request(app)
+      .post("/api/transactions")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        amount: 999,
+        type: "EXPENSE",
+        description: "Compra pix",
+        paymentMethod: "PIX",
+      });
+
+    const res = await request(app)
+      .get("/api/cards/bills")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.bills).toHaveLength(1);
+    expect(res.body.bills[0].card.id).toBe(cardId);
+    expect(res.body.bills[0].current.total).toBe(150);
+    expect(res.body.bills[0].current.count).toBe(1);
+  });
+
+  it("should count a past invoice as due", async () => {
+    const token = await createAndAuthenticateUser();
+    const card = await request(app)
+      .post("/api/cards")
+      .set("Authorization", `Bearer ${token}`)
+      .send(validCard);
+
+    const me = await request(app)
+      .get("/api/users/me")
+      .set("Authorization", `Bearer ${token}`);
+
+    const { month, year } = getBusinessMonthYear();
+    const twoMonthsAgo = new Date(year, month - 3, 15);
+
+    await prisma.transaction.create({
+      data: {
+        userId: me.body.user.id,
+        amount: 200,
+        type: "EXPENSE",
+        description: "Compra antiga",
+        paymentMethod: "CREDIT",
+        cardId: card.body.card.id,
+        date: twoMonthsAgo,
+        month: twoMonthsAgo.getMonth() + 1,
+        year: twoMonthsAgo.getFullYear(),
+      },
+    });
+
+    const res = await request(app)
+      .get("/api/cards/bills")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.bills[0].current.closed).toBe(true);
+    expect(res.body.totalDue).toBe(200);
   });
 });

@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
 import z from "zod";
 import prisma from "../lib/prisma.js";
+import { getBusinessYMD } from "../lib/date.js";
+import { buildCardInvoices } from "../lib/invoice.js";
 
 const MAX_CARDS = 5;
 
@@ -25,6 +27,67 @@ export async function getCards(req: Request, res: Response) {
   });
 
   res.status(200).json({ cards });
+}
+
+export async function getBills(req: Request, res: Response) {
+  const userId = req.user.id;
+
+  const cards = await prisma.card.findMany({
+    where: { userId },
+    orderBy: { createdAt: "asc" },
+  });
+
+  if (cards.length === 0) {
+    res.status(200).json({ bills: [], totalDue: 0 });
+    return;
+  }
+
+  const transactions = await prisma.transaction.findMany({
+    where: {
+      userId,
+      type: "EXPENSE",
+      paymentMethod: "CREDIT",
+      cardId: { in: cards.map((card) => card.id) },
+    },
+    select: { amount: true, date: true, cardId: true },
+  });
+
+  const today = getBusinessYMD();
+  let totalDueCents = 0;
+  const bills = [];
+
+  for (const card of cards) {
+    const inputs = transactions
+      .filter((tx) => tx.cardId === card.id)
+      .map((tx) => ({
+        amountCents: Math.round(Number(tx.amount) * 100),
+        purchase: getBusinessYMD(tx.date),
+      }));
+
+    const { current, upcoming } = buildCardInvoices(
+      inputs,
+      card.closingDay,
+      card.dueDay,
+      today,
+    );
+    if (!current) continue;
+
+    if (current.closed) totalDueCents += Math.round(current.total * 100);
+
+    bills.push({
+      card: {
+        id: card.id,
+        name: card.name,
+        color: card.color,
+        closingDay: card.closingDay,
+        dueDay: card.dueDay,
+      },
+      current,
+      upcoming,
+    });
+  }
+
+  res.status(200).json({ bills, totalDue: totalDueCents / 100 });
 }
 
 export async function createCard(req: Request, res: Response) {

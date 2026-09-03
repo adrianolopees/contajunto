@@ -50,7 +50,7 @@ export default function CategoryDetail() {
 
       const found = categories.find((c) => c.id === id);
       if (!found) {
-        navigate("/categories");
+        navigate("/dashboard");
         return;
       }
       setCategory(found);
@@ -115,7 +115,7 @@ export default function CategoryDetail() {
           variant="ghost"
           size="icon"
           aria-label="Voltar"
-          render={<Link to="/categories" />}
+          render={<Link to="/dashboard" />}
         >
           <ArrowLeft size={20} />
         </Button>

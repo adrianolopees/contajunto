@@ -37,3 +37,31 @@ export async function updateCard(
 export async function deleteCard(id: string): Promise<void> {
   await api.delete(`/cards/${id}`);
 }
+
+export interface Invoice {
+  closeDate: string;
+  dueDate: string;
+  total: number;
+  count: number;
+  closed: boolean;
+}
+
+export interface Bill {
+  card: {
+    id: string;
+    name: string;
+    color: string;
+    closingDay: number;
+    dueDay: number;
+  };
+  current: Invoice;
+  upcoming: Invoice | null;
+}
+
+export async function getBills(): Promise<{
+  bills: Bill[];
+  totalDue: number;
+}> {
+  const res = await api.get("/cards/bills");
+  return res.data;
+}

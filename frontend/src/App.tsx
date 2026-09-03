@@ -8,9 +8,9 @@ import Dashboard from "@/pages/Dashboard";
 import { Profile } from "@/pages/profile/Profile";
 import { FamilyGroupPage } from "@/pages/group/FamilyGroupPage";
 import TransactionForm from "@/pages/transactions/TransactionForm";
-import CategoryList from "@/pages/categories/CategoryList";
 import CategoryDetail from "@/pages/categories/CategoryDetail";
 import TransactionList from "@/pages/transactions/TransactionList";
+import Bills from "@/pages/bills/Bills";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { accessToken, isLoading } = useAuth();
@@ -59,8 +59,8 @@ export default function App() {
           <Route path="/transactions" element={<TransactionList />} />
           <Route path="/transactions/new" element={<TransactionForm />} />
           <Route path="/transactions/:id/edit" element={<TransactionForm />} />
-          <Route path="/categories" element={<CategoryList />} />
           <Route path="/categories/:id" element={<CategoryDetail />} />
+          <Route path="/bills" element={<Bills />} />
           <Route path="/familyGroup" element={<FamilyGroupPage />} />
           <Route path="/me" element={<Profile />} />
         </Route>

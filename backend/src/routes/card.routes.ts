@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   getCards,
+  getBills,
   createCard,
   updateCard,
   deleteCard,
@@ -10,6 +11,7 @@ import authMiddleware from "../middlewares/auth.middleware.js";
 const router = Router();
 
 router.get("/", authMiddleware, getCards);
+router.get("/bills", authMiddleware, getBills);
 router.post("/", authMiddleware, createCard);
 router.patch("/:id", authMiddleware, updateCard);
 router.delete("/:id", authMiddleware, deleteCard);
