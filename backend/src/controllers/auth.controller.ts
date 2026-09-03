@@ -128,6 +128,7 @@ export async function login(req: Request, res: Response) {
       id: user.id,
       name: user.name,
       email: user.email,
+      monthlyBudget: user.monthlyBudget,
       familyGroupId: user.familyGroupId,
     },
   });
@@ -185,6 +186,7 @@ export async function refresh(req: Request, res: Response) {
       id: user.id,
       name: user.name,
       email: user.email,
+      monthlyBudget: user.monthlyBudget,
       familyGroupId: user.familyGroupId,
     },
   });

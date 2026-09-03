@@ -48,6 +48,16 @@ describe("GET /users/me", () => {
     expect(res.body.user).not.toHaveProperty("passwordHash");
     expect(res.body.user.email).toBe("test@contajunto.com");
   });
+
+  it("should return monthlyBudget as null for a new user", async () => {
+    const accessToken = await createAndAuthenticateUser();
+    const res = await request(app)
+      .get("/api/users/me")
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.user.monthlyBudget).toBeNull();
+  });
 });
 
 describe("PATCH /users/me", () => {
@@ -93,5 +103,58 @@ describe("PATCH /users/me", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.user).not.toHaveProperty("passwordHash");
+  });
+
+  it("should set the monthly budget", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .patch("/api/users/me")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ monthlyBudget: 4000 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.user.monthlyBudget).toBe("4000");
+  });
+
+  it("should clear the monthly budget when sent as null", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    await request(app)
+      .patch("/api/users/me")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ monthlyBudget: 4000 });
+
+    const res = await request(app)
+      .patch("/api/users/me")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ monthlyBudget: null });
+
+    expect(res.status).toBe(200);
+    expect(res.body.user.monthlyBudget).toBeNull();
+  });
+
+  it("should return 400 when monthlyBudget is not positive", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .patch("/api/users/me")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ monthlyBudget: -10 });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("should update name and monthlyBudget together", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .patch("/api/users/me")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ name: "Ana Budget", monthlyBudget: 2500 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.user.name).toBe("Ana Budget");
+    expect(res.body.user.monthlyBudget).toBe("2500");
   });
 });

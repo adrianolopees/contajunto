@@ -23,6 +23,7 @@ import {
 } from "@/services/groups";
 import type { CategoryGroup } from "@/services/categories";
 import { Card, CardContent } from "@/components/ui/card";
+import BudgetBar from "@/components/BudgetBar";
 import MonthPicker from "@/components/MonthPicker";
 import CategoryBadge from "@/components/CategoryBadge";
 import DonutChart from "@/components/DonutChart";
@@ -134,6 +135,10 @@ export default function Dashboard() {
 
   const recentTransactions = transactions.slice(0, 5);
 
+  const now = new Date();
+  const isCurrentMonth =
+    month === now.getMonth() + 1 && year === now.getFullYear();
+
   return (
     <div className="space-y-4 px-4 py-4 pb-24">
       <div>
@@ -199,6 +204,14 @@ export default function Dashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {view === "personal" && (
+        <BudgetBar
+          spent={summary?.expense ?? 0}
+          budget={user?.monthlyBudget ? Number(user.monthlyBudget) : null}
+          isCurrentMonth={isCurrentMonth}
+        />
+      )}
 
       {view === "family" && group && (
         <div className="grid grid-cols-2 gap-2">
