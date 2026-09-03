@@ -6,7 +6,6 @@ import { getCategories, type Category } from "@/services/categories";
 import { getTransactions, type Transaction } from "@/services/transactions";
 import { Button } from "@/components/ui/button";
 import CategoryBadge from "@/components/CategoryBadge";
-import CategoryForm from "@/components/categories/CategoryForm";
 import EmptyState from "@/components/EmptyState";
 import { cn } from "@/lib/utils";
 import { formatCurrency, formatTransactionTimestamp } from "@/lib/format";
@@ -33,7 +32,6 @@ export default function CategoryDetail() {
   >([]);
   const [previousTotal, setPreviousTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [editOpen, setEditOpen] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!id) return;
@@ -75,11 +73,6 @@ export default function CategoryDetail() {
     loadData();
   }, [loadData]);
 
-  async function handleFormSuccess() {
-    setEditOpen(false);
-    await loadData();
-  }
-
   if (isLoading || !category) {
     return (
       <div className="p-4">
@@ -94,8 +87,6 @@ export default function CategoryDetail() {
     (sum, t) => sum + Number(t.amount),
     0,
   );
-  const limit = category.monthlyLimit ? Number(category.monthlyLimit) : null;
-  const progress = limit ? Math.min(total / limit, 1) : 0;
 
   const today = new Date();
   const mediaDiaria = total / today.getDate();
@@ -119,51 +110,23 @@ export default function CategoryDetail() {
 
   return (
     <div className="space-y-4 px-4 py-4 pb-24">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Voltar"
-            render={<Link to="/categories" />}
-          >
-            <ArrowLeft size={20} />
-          </Button>
-          <h1 className="text-lg font-semibold">{category.name}</h1>
-        </div>
-        <Button variant="link" onClick={() => setEditOpen(true)}>
-          Editar
+      <div className="flex items-center gap-3">
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Voltar"
+          render={<Link to="/categories" />}
+        >
+          <ArrowLeft size={20} />
         </Button>
+        <h1 className="text-lg font-semibold">{category.name}</h1>
       </div>
 
       <div className="rounded-xl border p-4">
         <div className="flex items-center gap-3">
           <CategoryBadge icon={category.icon} color={category.color} size={44} />
-          <div>
-            <p className="text-2xl font-bold">{formatCurrency(total)}</p>
-            {limit && (
-              <p className="text-sm text-muted-foreground">
-                de {formatCurrency(limit)} no mês
-              </p>
-            )}
-          </div>
+          <p className="text-2xl font-bold">{formatCurrency(total)}</p>
         </div>
-        {limit && (
-          <>
-            <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full"
-                style={{
-                  width: `${progress * 100}%`,
-                  backgroundColor: category.color,
-                }}
-              />
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {Math.round(progress * 100)}% do orçamento usado
-            </p>
-          </>
-        )}
       </div>
 
       <div className="grid grid-cols-3 gap-2">
@@ -246,13 +209,6 @@ export default function CategoryDetail() {
           </ul>
         )}
       </div>
-
-      <CategoryForm
-        open={editOpen}
-        onOpenChange={setEditOpen}
-        category={category}
-        onSuccess={handleFormSuccess}
-      />
     </div>
   );
 }

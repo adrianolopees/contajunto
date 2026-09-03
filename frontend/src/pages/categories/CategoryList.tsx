@@ -195,50 +195,30 @@ export default function CategoryList() {
         />
       ) : (
         <ul className="mt-4 space-y-2">
-          {spentCategories.map((category) => {
-            const limit = category.monthlyLimit
-              ? Number(category.monthlyLimit)
-              : null;
-            const progress = limit ? Math.min(category.total / limit, 1) : 0;
-
-            return (
-              <li key={category.id}>
-                <Link
-                  to={`/categories/${category.id}`}
-                  className="flex w-full items-center gap-3 rounded-lg border bg-card p-3 text-left"
-                >
-                  <CategoryBadge
-                    icon={category.icon}
-                    color={category.color}
-                    size={36}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="truncate font-medium">{category.name}</p>
-                      <p className="shrink-0 text-sm font-medium">
-                        {formatCurrency(category.total)}
-                      </p>
-                    </div>
-                    {limit && (
-                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-                        <div
-                          className="h-full rounded-full"
-                          style={{
-                            width: `${progress * 100}%`,
-                            backgroundColor: category.color,
-                          }}
-                        />
-                      </div>
-                    )}
-                  </div>
-                  <ChevronRight
-                    size={18}
-                    className="shrink-0 text-muted-foreground"
-                  />
-                </Link>
-              </li>
-            );
-          })}
+          {spentCategories.map((category) => (
+            <li key={category.id}>
+              <Link
+                to={`/categories/${category.id}`}
+                className="flex w-full items-center gap-3 rounded-lg border bg-card p-3 text-left"
+              >
+                <CategoryBadge
+                  icon={category.icon}
+                  color={category.color}
+                  size={36}
+                />
+                <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                  <p className="truncate font-medium">{category.name}</p>
+                  <p className="shrink-0 text-sm font-medium">
+                    {formatCurrency(category.total)}
+                  </p>
+                </div>
+                <ChevronRight
+                  size={18}
+                  className="shrink-0 text-muted-foreground"
+                />
+              </Link>
+            </li>
+          ))}
         </ul>
       )}
     </div>
