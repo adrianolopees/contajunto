@@ -103,7 +103,7 @@ const groups: GroupSeed[] = [
     subcategories: [
       { name: "Estacionamentos", icon: "Wallet" },
       { name: "Postos de gasolina", icon: "Fuel" },
-      { name: "Uber/99 (aplicativo de transporte)", icon: "Car" },
+      { name: "Uber/99", icon: "Car" },
       { name: "Táxi", icon: "Car" },
       { name: "Transporte público", icon: "Bus" },
       { name: "Pedágio", icon: "Ticket" },

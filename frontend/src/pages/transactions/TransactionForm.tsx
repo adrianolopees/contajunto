@@ -1,20 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod";
 import toast from "react-hot-toast";
 import axios from "axios";
-import {
-  ArrowLeft,
-  Banknote,
-  ChevronDown,
-  ChevronUp,
-  CreditCard,
-  Landmark,
-  QrCode,
-  Trash2,
-} from "lucide-react";
+import { ArrowLeft, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,24 +24,14 @@ import {
   type Transaction,
 } from "@/services/transactions";
 import { getCategories, type Category } from "@/services/categories";
-import type { PaymentMethod } from "@/services/transactions";
 import { getCards, type Card } from "@/services/cards";
-import CategoryBadge from "@/components/CategoryBadge";
+import CategoryPicker, {
+  NO_CATEGORY,
+} from "@/components/transactions/CategoryPicker";
+import PaymentMethodPicker from "@/components/transactions/PaymentMethodPicker";
 
-const NO_CATEGORY = "none";
 const NO_CARD = "none";
 const AMOUNT_CHIPS = [50, 100, 250, 500];
-
-const PAYMENT_METHODS: {
-  value: PaymentMethod;
-  label: string;
-  icon: typeof CreditCard;
-}[] = [
-  { value: "DEBIT", label: "Débito", icon: Landmark },
-  { value: "CREDIT", label: "Crédito", icon: CreditCard },
-  { value: "PIX", label: "Pix", icon: QrCode },
-  { value: "CASH", label: "Dinheiro", icon: Banknote },
-];
 
 const transactionFormSchema = z.object({
   type: z.enum(["EXPENSE", "INCOME"]),
@@ -79,8 +60,6 @@ export default function TransactionForm() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [cards, setCards] = useState<Card[]>([]);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-  const [categorySearch, setCategorySearch] = useState("");
-  const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
 
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionFormSchema),
@@ -104,47 +83,6 @@ export default function TransactionForm() {
   const amount = useWatch({ control: form.control, name: "amount" });
 
   const showCardPicker = type === "EXPENSE" && paymentMethod === "CREDIT";
-
-  const categoriesForType = categories.filter((c) => c.type === type);
-  const selectedCategory = categoriesForType.find((c) => c.id === categoryId);
-
-  const groupedCategories = useMemo(() => {
-    const map = new Map<
-      string,
-      { group: Category["group"]; items: Category[] }
-    >();
-    for (const category of categoriesForType) {
-      const entry = map.get(category.group.id);
-      if (entry) {
-        entry.items.push(category);
-      } else {
-        map.set(category.group.id, {
-          group: category.group,
-          items: [category],
-        });
-      }
-    }
-    return Array.from(map.values());
-  }, [categoriesForType]);
-
-  const searchTerm = categorySearch.trim().toLowerCase();
-  const filteredGroups = useMemo(() => {
-    if (!searchTerm) return groupedCategories;
-    return groupedCategories
-      .map(({ group, items }) => ({
-        group,
-        items: items.filter((item) =>
-          item.name.toLowerCase().includes(searchTerm),
-        ),
-      }))
-      .filter(({ items }) => items.length > 0);
-  }, [groupedCategories, searchTerm]);
-
-  function selectCategory(id: string) {
-    form.setValue("categoryId", id, { shouldValidate: true });
-    setExpandedGroupId(null);
-    setCategorySearch("");
-  }
 
   // categorias e cartões só precisam ser carregados uma vez
   useEffect(() => {
@@ -181,12 +119,6 @@ export default function TransactionForm() {
       form.setValue("categoryId", NO_CATEGORY);
     }
   }, [type, categories, categoryId, form]);
-
-  // trocar Gasto/Ganho invalida a busca e o grupo aberto do tipo anterior
-  useEffect(() => {
-    setCategorySearch("");
-    setExpandedGroupId(null);
-  }, [type]);
 
   // busca a transação e já popula o form quando os dados chegam
   useEffect(() => {
@@ -390,30 +322,12 @@ export default function TransactionForm() {
         </div>
         {/* Meio de pagamento: só faz sentido pra gasto */}
         {type === "EXPENSE" && (
-          <div>
-            <div className="grid grid-cols-4 gap-2">
-              {PAYMENT_METHODS.map(({ value, label, icon: Icon }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() =>
-                    form.setValue("paymentMethod", value, {
-                      shouldValidate: true,
-                    })
-                  }
-                  className={cn(
-                    "flex flex-col items-center gap-1 rounded-lg border p-2 text-xs transition-colors",
-                    paymentMethod === value
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:bg-muted",
-                  )}
-                >
-                  <Icon size={18} />
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
+          <PaymentMethodPicker
+            value={paymentMethod}
+            onSelect={(value) =>
+              form.setValue("paymentMethod", value, { shouldValidate: true })
+            }
+          />
         )}
 
         {/* Cartão: só no crédito */}
@@ -472,129 +386,15 @@ export default function TransactionForm() {
         )}
 
         {/* Categoria: busca + grupos expansíveis */}
-        <div>
-          {selectedCategory && (
-            <div className="mb-2 flex items-center gap-2 rounded-lg border border-primary bg-primary/10 p-2 text-sm">
-              <CategoryBadge
-                icon={selectedCategory.icon}
-                color={selectedCategory.color}
-                size={24}
-              />
-              <span className="min-w-0 flex-1 truncate font-medium">
-                {selectedCategory.name}
-              </span>
-              <button
-                type="button"
-                onClick={() =>
-                  form.setValue("categoryId", NO_CATEGORY, {
-                    shouldValidate: true,
-                  })
-                }
-                className="text-xs text-muted-foreground underline"
-              >
-                trocar
-              </button>
-            </div>
-          )}
-
-          <Input
-            value={categorySearch}
-            onChange={(e) => setCategorySearch(e.target.value)}
-            type="text"
-            placeholder="Buscar categoria"
-            aria-label="Buscar categoria"
-            className="py-2"
-          />
-
-          <div className="mt-2 space-y-2">
-            {!selectedCategory && (
-              <button
-                type="button"
-                onClick={() => selectCategory(NO_CATEGORY)}
-                className={cn(
-                  "flex w-full items-center gap-3 rounded-lg border p-2 text-sm transition-colors",
-                  categoryId === NO_CATEGORY
-                    ? "border-primary bg-primary/10"
-                    : "hover:bg-muted",
-                )}
-              >
-                <span className="size-6 rounded-full bg-muted-foreground/30" />
-                Sem categoria
-              </button>
-            )}
-
-            {filteredGroups.length === 0 ? (
-              <p className="py-4 text-center text-sm text-muted-foreground">
-                Nenhuma categoria encontrada.
-              </p>
-            ) : (
-              filteredGroups.map(({ group, items }) => {
-                const isExpanded =
-                  Boolean(searchTerm) || expandedGroupId === group.id;
-                return (
-                  <div
-                    key={group.id}
-                    className="overflow-hidden rounded-lg border"
-                  >
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpandedGroupId(
-                          expandedGroupId === group.id ? null : group.id,
-                        )
-                      }
-                      className="flex w-full items-center gap-3 p-2 text-left text-sm"
-                    >
-                      <CategoryBadge
-                        icon={group.icon}
-                        color={group.color}
-                        size={28}
-                      />
-                      <span className="min-w-0 flex-1 truncate font-medium">
-                        {group.name}
-                      </span>
-                      {isExpanded ? (
-                        <ChevronUp
-                          size={16}
-                          className="text-muted-foreground"
-                        />
-                      ) : (
-                        <ChevronDown
-                          size={16}
-                          className="text-muted-foreground"
-                        />
-                      )}
-                    </button>
-                    {isExpanded && (
-                      <div className="grid grid-cols-3 gap-2 border-t p-2">
-                        {items.map((item) => (
-                          <button
-                            key={item.id}
-                            type="button"
-                            onClick={() => selectCategory(item.id)}
-                            className={cn(
-                              "flex flex-col items-center gap-1 rounded-lg border p-2 text-xs transition-colors",
-                              categoryId === item.id
-                                ? "border-primary bg-primary/10"
-                                : "hover:bg-muted",
-                            )}
-                          >
-                            <CategoryBadge
-                              icon={item.icon}
-                              color={item.color}
-                              size={28}
-                            />
-                            {item.name}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
+        <CategoryPicker
+          key={type}
+          categories={categories}
+          type={type}
+          value={categoryId ?? NO_CATEGORY}
+          onSelect={(value) =>
+            form.setValue("categoryId", value, { shouldValidate: true })
+          }
+        />
 
         <div className="flex items-center justify-between gap-2 pb-8">
           {isEditMode && (
