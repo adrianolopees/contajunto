@@ -5,6 +5,7 @@ import prisma from "../lib/prisma.js";
 import jwt from "jsonwebtoken";
 import crypto from "node:crypto";
 import { getCatalogVersion, syncUserCategories } from "../lib/categoryCatalog.js";
+import { hashToken } from "../lib/token.js";
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
@@ -125,7 +126,7 @@ export async function login(req: Request, res: Response) {
 
   await prisma.refreshToken.create({
     data: {
-      token: refreshToken,
+      token: hashToken(refreshToken),
       userId: user.id,
       expiresAt,
     },
@@ -152,7 +153,10 @@ export async function refresh(req: Request, res: Response) {
     return;
   }
 
-  const stored = await prisma.refreshToken.findUnique({ where: { token } });
+  const tokenHash = hashToken(token);
+  const stored = await prisma.refreshToken.findUnique({
+    where: { token: tokenHash },
+  });
 
   if (!stored) {
     res.status(401).json({ message: "Invalid refresh token" });
@@ -160,7 +164,7 @@ export async function refresh(req: Request, res: Response) {
   }
 
   if (stored.expiresAt < new Date()) {
-    await prisma.refreshToken.deleteMany({ where: { token } });
+    await prisma.refreshToken.deleteMany({ where: { token: tokenHash } });
     res.status(401).json({ message: "Refresh token expired" });
     return;
   }
@@ -179,9 +183,13 @@ export async function refresh(req: Request, res: Response) {
   }
 
   await prisma.$transaction([
-    prisma.refreshToken.deleteMany({ where: { token } }),
+    prisma.refreshToken.deleteMany({ where: { token: tokenHash } }),
     prisma.refreshToken.create({
-      data: { token: newRefreshToken, userId: stored.userId, expiresAt },
+      data: {
+        token: hashToken(newRefreshToken),
+        userId: stored.userId,
+        expiresAt,
+      },
     }),
   ]);
 
@@ -210,7 +218,7 @@ export async function logout(req: Request, res: Response) {
     return;
   }
 
-  await prisma.refreshToken.deleteMany({ where: { token } });
+  await prisma.refreshToken.deleteMany({ where: { token: hashToken(token) } });
   res.clearCookie("refreshToken", COOKIE_OPTIONS);
   res.status(204).send();
 }

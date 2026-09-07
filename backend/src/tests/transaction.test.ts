@@ -15,10 +15,40 @@ afterAll(async () => {
   await prisma.transaction.deleteMany();
   await prisma.card.deleteMany();
   await prisma.category.deleteMany();
+  await prisma.categoryGroup.deleteMany({ where: { name: TEST_GROUP_NAME } });
   await prisma.refreshToken.deleteMany();
   await prisma.user.deleteMany();
   await prisma.$disconnect();
 });
+
+// categorias criadas direto no banco pra não depender do catálogo semeado no
+// banco de teste (que pode não ter os dois tipos)
+const TEST_GROUP_NAME = "Grupo Teste Patch";
+
+async function createCategoryFor(
+  accessToken: string,
+  type: "EXPENSE" | "INCOME",
+  name: string,
+) {
+  const me = await request(app)
+    .get("/api/users/me")
+    .set("Authorization", `Bearer ${accessToken}`);
+  const group = await prisma.categoryGroup.upsert({
+    where: { name: TEST_GROUP_NAME },
+    update: {},
+    create: { type, name: TEST_GROUP_NAME, color: "#000000", icon: "Package" },
+  });
+  return prisma.category.create({
+    data: {
+      type,
+      name,
+      color: "#000000",
+      icon: "Package",
+      groupId: group.id,
+      userId: me.body.user.id,
+    },
+  });
+}
 
 const validTransaction = {
   amount: 49.9,
@@ -446,6 +476,61 @@ describe("PATCH /transactions/:id", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.transaction.paymentMethod).toBeNull();
+  });
+
+  it("should return 400 when changing the type while keeping a category of the old type", async () => {
+    const accessToken = await createAndAuthenticateUser();
+    const expenseCategory = await createCategoryFor(accessToken, "EXPENSE", "Mercado");
+
+    const createRes = await request(app)
+      .post("/api/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ ...validTransaction, categoryId: expenseCategory.id });
+
+    const res = await request(app)
+      .patch(`/api/transactions/${createRes.body.transaction.id}`)
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ type: "INCOME" });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("should return 200 when changing the type together with a category of the new type", async () => {
+    const accessToken = await createAndAuthenticateUser();
+    const expenseCategory = await createCategoryFor(accessToken, "EXPENSE", "Mercado");
+    const incomeCategory = await createCategoryFor(accessToken, "INCOME", "Freela");
+
+    const createRes = await request(app)
+      .post("/api/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ ...validTransaction, categoryId: expenseCategory.id });
+
+    const res = await request(app)
+      .patch(`/api/transactions/${createRes.body.transaction.id}`)
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ type: "INCOME", categoryId: incomeCategory.id });
+
+    expect(res.status).toBe(200);
+    expect(res.body.transaction.type).toBe("INCOME");
+    expect(res.body.transaction.categoryId).toBe(incomeCategory.id);
+  });
+
+  it("should return 200 when changing the type and clearing the category", async () => {
+    const accessToken = await createAndAuthenticateUser();
+    const expenseCategory = await createCategoryFor(accessToken, "EXPENSE", "Mercado");
+
+    const createRes = await request(app)
+      .post("/api/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ ...validTransaction, categoryId: expenseCategory.id });
+
+    const res = await request(app)
+      .patch(`/api/transactions/${createRes.body.transaction.id}`)
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ type: "INCOME", categoryId: null });
+
+    expect(res.status).toBe(200);
+    expect(res.body.transaction.categoryId).toBeNull();
   });
 });
 

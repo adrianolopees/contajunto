@@ -157,6 +157,20 @@ export async function updateTransaction(req: Request, res: Response) {
       res.status(404).json({ message: "Invalid category" });
       return;
     }
+  } else if (
+    categoryId === undefined &&
+    type &&
+    type !== transaction.type &&
+    transaction.categoryId
+  ) {
+    // trocou o tipo sem mexer na categoria (campo ausente — `null` é pedido
+    // explícito de limpar e passa): a categoria atual, de despesa digamos,
+    // ficaria presa numa receita. Category.type é imutável, então é a transação
+    // que tem que mandar uma categoria compatível — ou null.
+    res.status(400).json({
+      message: "Current category does not match the new type; send a compatible categoryId or null",
+    });
+    return;
   }
 
   // valida contra o estado resultante (campo ausente = mantém o atual)
