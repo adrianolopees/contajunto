@@ -7,6 +7,9 @@ import type { TransactionType } from "../generated/prisma/index.js";
 export interface SubcategorySeed {
   name: string;
   icon: string;
+  // nomes antigos desta subcategoria (mesmo grupo). Quem já tem a categoria
+  // com o nome antigo é renomeado no sync em vez de ganhar uma duplicata
+  legacyNames?: string[];
 }
 
 export interface GroupSeed {
@@ -105,7 +108,11 @@ export const groups: GroupSeed[] = [
     subcategories: [
       { name: "Estacionamentos", icon: "Wallet" },
       { name: "Postos de gasolina", icon: "Fuel" },
-      { name: "Uber/99", icon: "Car" },
+      {
+        name: "Uber/99",
+        icon: "Car",
+        legacyNames: ["Táxi e transporte privado urbano"],
+      },
       { name: "Táxi", icon: "Car" },
       { name: "Transporte público", icon: "Bus" },
       { name: "Pedágio", icon: "Ticket" },

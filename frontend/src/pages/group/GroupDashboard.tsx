@@ -37,7 +37,6 @@ const UNCATEGORIZED_COLOR = "var(--color-muted-foreground)";
 export function GroupDashboard() {
   const { user, updateUser } = useAuth();
   const [group, setGroup] = useState<Omit<Group, "inviteCode"> | null>(null);
-  const [inviteCode, setInviteCode] = useState("");
   const [transactions, setTransactions] = useState<GroupTransaction[]>([]);
   const [summary, setSummary] = useState<TransactionsSummary | null>(null);
   const [memberSpending, setMemberSpending] = useState<MemberSpending[]>([]);
@@ -48,12 +47,7 @@ export function GroupDashboard() {
   useEffect(() => {
     async function fetchGroupInfo() {
       try {
-        const [groupData, code] = await Promise.all([
-          getGroup(),
-          getInviteCode(),
-        ]);
-        setGroup(groupData);
-        setInviteCode(code);
+        setGroup(await getGroup());
       } catch {
         toast.error("Não foi possível carregar o grupo. Tente novamente.");
       }
@@ -96,9 +90,16 @@ export function GroupDashboard() {
     }
   }
 
+  // busca na hora do clique, não no mount: o backend rotaciona o código a cada
+  // entrada de membro, então um código guardado desde o load pode já estar morto
   async function handleInvite() {
-    await navigator.clipboard.writeText(inviteCode);
-    toast.success("Código de convite copiado!");
+    try {
+      const code = await getInviteCode();
+      await navigator.clipboard.writeText(code);
+      toast.success("Código de convite copiado!");
+    } catch {
+      toast.error("Não foi possível copiar o convite. Tente novamente.");
+    }
   }
 
   return (

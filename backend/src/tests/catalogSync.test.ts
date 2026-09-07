@@ -22,6 +22,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+  await prisma.transaction.deleteMany();
   await prisma.category.deleteMany();
   await prisma.refreshToken.deleteMany();
   await prisma.user.deleteMany();
@@ -34,6 +35,7 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
+  await prisma.transaction.deleteMany();
   await prisma.category.deleteMany();
   await prisma.refreshToken.deleteMany();
   await prisma.user.deleteMany();
@@ -128,5 +130,111 @@ describe("catalog sync on login", () => {
     await register();
 
     expect(await userVersion()).toBe(0);
+  });
+});
+
+// estes usam o catálogo REAL semeado pelo pretest (grupo "Transporte"), porque
+// o mapa de nomes legados vive em catalogData.ts
+describe("legacy categories on sync", () => {
+  const LEGACY = "Táxi e transporte privado urbano";
+  const CURRENT = "Uber/99";
+
+  async function userAndGroup() {
+    const user = await prisma.user.findUniqueOrThrow({
+      where: { email: testUser.email },
+    });
+    const group = await prisma.categoryGroup.findUniqueOrThrow({
+      where: { name: "Transporte" },
+    });
+    return { user, group };
+  }
+
+  // simula uma conta antiga: tinha o nome legado em vez do atual
+  async function turnIntoLegacyAccount() {
+    const { user, group } = await userAndGroup();
+    const current = await prisma.category.findUniqueOrThrow({
+      where: { userId_groupId_name: { userId: user.id, groupId: group.id, name: CURRENT } },
+    });
+    await prisma.category.update({ where: { id: current.id }, data: { name: LEGACY } });
+    return { user, group, legacyId: current.id };
+  }
+
+  async function bumpCatalog() {
+    await prisma.catalogMeta.update({
+      where: { id: CATALOG_META_ID },
+      data: { version: 11 },
+    });
+  }
+
+  async function addTransaction(userId: string, categoryId: string) {
+    const now = new Date();
+    await prisma.transaction.create({
+      data: {
+        userId,
+        categoryId,
+        type: "EXPENSE",
+        amount: 10,
+        description: "corrida",
+        date: now,
+        month: now.getMonth() + 1,
+        year: now.getFullYear(),
+      },
+    });
+  }
+
+  it("should rename a legacy category to its current name, keeping its transactions", async () => {
+    await register();
+    const { user, legacyId } = await turnIntoLegacyAccount();
+    await addTransaction(user.id, legacyId);
+    await bumpCatalog();
+
+    const categories = await loginAndListCategories();
+
+    expect(categories.filter((c) => c.name === CURRENT)).toHaveLength(1);
+    expect(categories.some((c) => c.name === LEGACY)).toBe(false);
+    const renamed = await prisma.category.findUniqueOrThrow({ where: { id: legacyId } });
+    expect(renamed.name).toBe(CURRENT);
+    expect(await prisma.transaction.count({ where: { categoryId: legacyId } })).toBe(1);
+  });
+
+  it("should delete an unused legacy category when the current one already exists", async () => {
+    await register();
+    const { user, group } = await userAndGroup();
+    await prisma.category.create({
+      data: { userId: user.id, groupId: group.id, type: "EXPENSE", name: LEGACY, color: "#000", icon: "Car" },
+    });
+    await bumpCatalog();
+
+    const categories = await loginAndListCategories();
+
+    expect(categories.filter((c) => c.name === CURRENT)).toHaveLength(1);
+    expect(categories.some((c) => c.name === LEGACY)).toBe(false);
+  });
+
+  it("should delete a category that left the catalog when it has no transactions", async () => {
+    await register();
+    const { user, group } = await userAndGroup();
+    await prisma.category.create({
+      data: { userId: user.id, groupId: group.id, type: "EXPENSE", name: "Sumiu do catálogo", color: "#000", icon: "Car" },
+    });
+    await bumpCatalog();
+
+    const categories = await loginAndListCategories();
+
+    expect(categories.some((c) => c.name === "Sumiu do catálogo")).toBe(false);
+  });
+
+  it("should keep a category that left the catalog when it still has transactions", async () => {
+    await register();
+    const { user, group } = await userAndGroup();
+    const stale = await prisma.category.create({
+      data: { userId: user.id, groupId: group.id, type: "EXPENSE", name: "Sumiu mas tem gasto", color: "#000", icon: "Car" },
+    });
+    await addTransaction(user.id, stale.id);
+    await bumpCatalog();
+
+    const categories = await loginAndListCategories();
+
+    expect(categories.some((c) => c.name === "Sumiu mas tem gasto")).toBe(true);
   });
 });
