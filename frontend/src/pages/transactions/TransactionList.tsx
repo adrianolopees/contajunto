@@ -10,7 +10,8 @@ import EmptyState from "@/components/EmptyState";
 export default function TransactionList() {
   const { month, year, prev, next } = useMonthNavigation();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  // começa true: com false o EmptyState piscava antes do primeiro fetch
+  const [isLoading, setIsLoading] = useState(true);
 
   const loadTransactions = useCallback(async () => {
     try {
@@ -35,7 +36,7 @@ export default function TransactionList() {
       {isLoading ? (
         <p className="py-8 text-center text-muted-foreground">Carregando...</p>
       ) : transactions.length === 0 ? (
-        <EmptyState message="Nenhuma transação neste mes." />
+        <EmptyState message="Nenhuma transação neste mês." />
       ) : (
         <ul className="mt-4 space-y-2">
           {transactions.map((transaction) => (

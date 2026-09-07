@@ -37,7 +37,7 @@ export function formatTransactionTimestamp(date: string | Date): string {
     });
     return `Hoje, ${time}`;
   }
-  if (diffDays === 1) return "1 dia atrás";
+  if (diffDays === 1) return "Ontem"; // mesma palavra que formatRelativeDay
   if (diffDays > 1 && diffDays < 30) return `${diffDays} dias atrás`;
   return target.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
 }

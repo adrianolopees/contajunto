@@ -63,13 +63,13 @@ export function Profile() {
 
   return (
     <div className="space-y-4 px-4 py-4">
-      <Card className="w-full max-w-sm">
+      <Card className="mx-auto w-full max-w-sm">
         <CardHeader>
           <CardTitle>Seu perfil</CardTitle>
           <CardDescription>Atualize suas informações</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
             <div className="grid gap-2">
               <Label htmlFor="name">Nome</Label>
               <Input {...register("name")} id="name" type="text" />
@@ -115,7 +115,7 @@ export function Profile() {
         </CardContent>
       </Card>
 
-      <Card className="w-full max-w-sm">
+      <Card className="mx-auto w-full max-w-sm">
         <CardHeader>
           <CardTitle>Cartões</CardTitle>
           <CardDescription>

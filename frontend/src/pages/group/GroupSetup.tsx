@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import toast from "react-hot-toast";
+import axios from "axios";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -20,7 +21,7 @@ import { createGroup, joinGroup } from "@/services/groups";
 const createGroupSchema = z.object({
   name: z
     .string()
-    .min(2, "Nome tem que ter no minimo dois caracateres")
+    .min(2, "O nome deve ter no mínimo 2 caracteres")
     .max(100),
 });
 const joinGroupSchema = z.object({
@@ -60,34 +61,50 @@ export function GroupSetup() {
     try {
       const membership = await joinGroup(data.inviteCode);
       updateUser(membership);
-      toast.success("você entrou no grupo!");
-    } catch {
-      toast.error("Código de convite inválido");
+      toast.success("Você entrou no grupo!");
+    } catch (error) {
+      // o backend distingue convite inválido (404), grupo cheio e "já está
+      // num grupo" (409) — dizer "código inválido" pra tudo mandava o usuário
+      // conferir um código que estava certo
+      if (axios.isAxiosError(error) && error.response?.status === 409) {
+        const message: string | undefined = error.response.data?.message;
+        toast.error(
+          message?.includes("exceeded")
+            ? "Esse grupo já está cheio."
+            : "Você já faz parte de um grupo.",
+        );
+      } else if (axios.isAxiosError(error) && error.response?.status === 404) {
+        toast.error("Código de convite inválido.");
+      } else {
+        toast.error("Erro ao entrar no grupo. Tente novamente.");
+      }
     }
   }
   return (
-    <div className="flex min-h-screen items-center justify-center">
+    // dentro do AppShell (header + nav fixos): min-h-screen estourava a
+    // viewport e deixava scroll atrás da nav
+    <div className="flex justify-center px-4 py-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
           {mode === "create" ? (
             <>
               <CardTitle>Crie seu grupo</CardTitle>
               <CardDescription>
-                Qual nome quer dar a seu grupo ?
+                Qual nome quer dar ao seu grupo?
               </CardDescription>
             </>
           ) : (
             <>
               <CardTitle>Junte suas finanças</CardTitle>
               <CardDescription>
-                Encontre atravez do convite seu familiar
+                Entre no grupo da sua família com o código de convite
               </CardDescription>
             </>
           )}
         </CardHeader>
         <CardContent>
           {mode === "create" && (
-            <form onSubmit={handleSubmitCreate(onSubmitCreate)}>
+            <form onSubmit={handleSubmitCreate(onSubmitCreate)} noValidate>
               <div className="flex flex-col gap-6">
                 <div className="grid gap-2">
                   <Label htmlFor="name">Nome do Grupo</Label>
@@ -111,11 +128,11 @@ export function GroupSetup() {
             </form>
           )}
           {mode === "join" && (
-            <form onSubmit={handleSubmitJoin(onSubmitJoin)}>
+            <form onSubmit={handleSubmitJoin(onSubmitJoin)} noValidate>
               <div className="flex flex-col gap-6">
                 <div className="grid gap-2">
                   <div className="flex items-center">
-                    <Label htmlFor="inviteCode">Codigo de convite</Label>
+                    <Label htmlFor="inviteCode">Código de convite</Label>
                   </div>
                   <Input
                     {...registerJoin("inviteCode")}

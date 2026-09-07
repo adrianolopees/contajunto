@@ -211,7 +211,7 @@ export default function TransactionForm() {
         </h1>
       </div>
 
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" noValidate>
         {/* Toggle Gasto / Ganho */}
         <div className="grid grid-cols-2 gap-2 rounded-xl border p-0.5">
           <button

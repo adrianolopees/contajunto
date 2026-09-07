@@ -204,7 +204,7 @@ export function GroupDashboard() {
             Carregando...
           </p>
         ) : transactions.length === 0 ? (
-          <EmptyState message="Nenhuma transação neste mes." />
+          <EmptyState message="Nenhuma transação neste mês." />
         ) : (
           <ul className="space-y-2">
             {transactions.map((transaction) => (

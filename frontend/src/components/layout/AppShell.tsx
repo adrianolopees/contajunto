@@ -66,39 +66,24 @@ export default function AppShell() {
                 <User size={18} />
                 Meu perfil
               </SheetClose>
-              <SheetClose
-                render={
-                  <Link
-                    to="/"
-                    className="mx-2 flex items-center gap-2 rounded-lg px-2 py-2 text-sm hover:bg-muted"
-                  />
-                }
-              >
-                <Mail size={18} />
-                Notificações
-              </SheetClose>
-              <SheetClose
-                render={
-                  <Link
-                    to="/"
-                    className="mx-2 flex items-center gap-2 rounded-lg px-2 py-2 text-sm hover:bg-muted"
-                  />
-                }
-              >
-                <Settings size={18} />
-                Configurações
-              </SheetClose>
-              <SheetClose
-                render={
-                  <Link
-                    to="/"
-                    className="mx-2 flex items-center gap-2 rounded-lg px-2 py-2 text-sm hover:bg-muted"
-                  />
-                }
-              >
-                <CircleQuestionMark size={18} />
-                Ajuda e Suporte
-              </SheetClose>
+              {/* placeholders assumidos (decisão de 30/07): ficam visíveis
+                  como "em breve", mas não parecem clicáveis — antes linkavam
+                  pra "/" e só recarregavam o dashboard */}
+              {[
+                { icon: Mail, label: "Notificações" },
+                { icon: Settings, label: "Configurações" },
+                { icon: CircleQuestionMark, label: "Ajuda e Suporte" },
+              ].map(({ icon: Icon, label }) => (
+                <div
+                  key={label}
+                  aria-disabled="true"
+                  className="mx-2 flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-muted-foreground/60"
+                >
+                  <Icon size={18} />
+                  {label}
+                  <span className="ml-auto text-xs">em breve</span>
+                </div>
+              ))}
               <SheetFooter>
                 <SheetClose
                   render={

@@ -17,7 +17,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
-    localStorage.setItem("theme", theme);
+    try {
+      localStorage.setItem("theme", theme);
+    } catch {
+      // modo privado / quota cheia: o tema ainda aplica, só não persiste
+    }
   }, [theme]);
 
   function toggleTheme() {

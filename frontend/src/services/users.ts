@@ -1,10 +1,8 @@
 import type { User } from "../contexts/AuthContext";
 import { api } from "@/lib/api";
 
-export async function getMe(): Promise<User> {
-  const res = await api.get("/users/me");
-  return res.data.user;
-}
+// getMe não existe aqui de propósito: login e refresh já devolvem `user`, e
+// nenhuma tela precisou de um refetch avulso até agora
 
 export async function updateMe(data: {
   name?: string;

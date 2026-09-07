@@ -48,11 +48,13 @@ api.interceptors.response.use(
   async (error) => {
     const original = error.config;
 
-    if (
-      error.response?.status === 401 &&
-      !original._retry &&
-      !original.url?.includes("/auth/refresh")
-    ) {
+    // 401 de login/registro é credencial errada, não sessão expirada: tentar
+    // refresh + reenviar o login só gasta rate limit (10/15min) em dobro
+    const isAuthAttempt = ["/auth/refresh", "/auth/login", "/auth/register"].some(
+      (path) => original.url?.includes(path),
+    );
+
+    if (error.response?.status === 401 && !original._retry && !isAuthAttempt) {
       original._retry = true;
 
       try {

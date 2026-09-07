@@ -85,7 +85,7 @@ export default function Register() {
           Comece a organizar suas finanças em minutos.
         </p>
       </div>
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form onSubmit={handleSubmit(onSubmit)} noValidate>
         <div className="flex flex-col gap-6">
           <div className="grid gap-2">
             <Label
@@ -142,7 +142,7 @@ export default function Register() {
           </div>
           <div className="grid gap-2">
             <Label
-              htmlFor="confirmaPassword"
+              htmlFor="confirmPassword"
               className="leading-relaxed text-muted-foreground"
             >
               CONFIRMAR SENHA
@@ -172,7 +172,7 @@ export default function Register() {
         </div>
       </form>
       <p className="mt-auto text-center text-sm leading-relaxed text-muted-foreground">
-        Já tem conta?{""}
+        Já tem conta?{" "}
         <Button
           variant="link"
           className="p-1 h-auto mt-3 font-extrabold"

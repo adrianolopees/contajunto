@@ -24,8 +24,5 @@
       "bash -c 'cd frontend && ./node_modules/.bin/tsc -b'",
       "bash -c 'cd frontend && ./node_modules/.bin/eslint src'"
     ]
-  },
-  "dependencies": {
-    "@fontsource-variable/manrope": "^5.3.0"
   }
 }

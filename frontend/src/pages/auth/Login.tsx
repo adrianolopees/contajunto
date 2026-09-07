@@ -62,7 +62,9 @@ export default function Login() {
           Suas finanças, e as da família, num só lugar.
         </p>
       </div>
-      <form onSubmit={handleSubmit(onSubmit)}>
+      {/* noValidate: o schema Zod é a única fonte de verdade — sem isso o
+          browser intercepta type="email" antes do React Hook Form rodar */}
+      <form onSubmit={handleSubmit(onSubmit)} noValidate>
         <div className="flex flex-col gap-6">
           <div className="grid gap-2">
             <Label
@@ -102,15 +104,12 @@ export default function Login() {
             )}
           </div>
         </div>
-        <p className="mt-3.5 text-right text-sm font-semibold text-primary">
-          Esqueceu a senha?
-        </p>
         <Button type="submit" size="xl" className="w-full mt-8 text-white">
           Entrar
         </Button>
       </form>
       <p className="mt-auto text-center text-sm leading-relaxed text-muted-foreground">
-        Não tem conta?{""}
+        Não tem conta?{" "}
         <Button
           variant="link"
           className="p-1 h-auto mt-3 font-extrabold"

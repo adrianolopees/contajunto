@@ -204,6 +204,7 @@ export default function CardManager() {
           <form
             onSubmit={form.handleSubmit(onSubmit)}
             className="space-y-4"
+            noValidate
           >
             <div className="grid gap-2">
               <Label htmlFor="card-name">Nome</Label>
