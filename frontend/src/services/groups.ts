@@ -8,7 +8,6 @@ import type {
 export interface GroupMember {
   id: string;
   name: string;
-  email: string;
 }
 
 export interface Group {

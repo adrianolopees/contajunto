@@ -14,7 +14,12 @@ const cardSchema = z.object({
     .max(50, { error: "O nome não pode exceder 50 caracteres" }),
   closingDay: z.number().int().min(1).max(31),
   dueDay: z.number().int().min(1).max(31),
-  color: z.string().trim().min(1).max(30),
+  // a UI oferece uma paleta fixa de hex; a API não deveria aceitar qualquer
+  // string que depois vira `style={{ backgroundColor }}` no cliente
+  color: z
+    .string()
+    .trim()
+    .regex(/^#[0-9a-f]{6}$/i, { error: "Cor deve ser hex no formato #rrggbb" }),
 });
 
 const updateCardSchema = cardSchema.partial();

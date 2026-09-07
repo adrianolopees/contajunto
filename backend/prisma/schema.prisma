@@ -32,6 +32,10 @@ model RefreshToken {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   createdAt DateTime @default(now())
+
+  // login limpa tokens expirados por userId e o cascade do User também
+  // filtra por ele — sem índice, ambos varrem a tabela inteira
+  @@index([userId])
 }
 
 model FamilyGroup {

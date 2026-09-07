@@ -5,9 +5,12 @@ interface RawSpending {
   total: number;
 }
 
-async function findCategoriesWithGroup(categoryIds: string[]) {
+// `userIds` restringe as categorias aos donos das transações somadas. Hoje a
+// invariante (categoryId sempre do mesmo dono) já é garantida no create/update;
+// o filtro é cinto de segurança pra ela nunca virar vazamento entre contas.
+async function findCategoriesWithGroup(categoryIds: string[], userIds: string[]) {
   return prisma.category.findMany({
-    where: { id: { in: categoryIds } },
+    where: { id: { in: categoryIds }, userId: { in: userIds } },
     select: {
       id: true,
       name: true,
@@ -41,18 +44,24 @@ export interface GroupedSpending {
 
 // reagrupa gastos já somados por subcategoria em totais por categoria pai —
 // mantém cada subcategoria em `categories` pra permitir expandir o grupo no
-// frontend sem perder o resumo por categoria pai que torna o gráfico legível
+// frontend sem perder o resumo por categoria pai que torna o gráfico legível.
+// Soma em centavos (inteiros), como os summaries: somar Decimal->Number em
+// float acumula ruído tipo 1531.4200000001
 export async function groupSpendingByCategoryGroup(
   spending: RawSpending[],
+  userIds: string[],
 ): Promise<GroupedSpending[]> {
   const categoryIds = spending
     .map((item) => item.categoryId)
     .filter((id): id is string => id !== null);
 
-  const categories = await findCategoriesWithGroup(categoryIds);
+  const categories = await findCategoriesWithGroup(categoryIds, userIds);
   const categoryById = new Map(categories.map((c) => [c.id, c] as const));
 
-  const totals = new Map<string, GroupedSpending>();
+  const totals = new Map<
+    string,
+    { group: CategoryGroupInfo | null; totalCents: number; categories: CategorySpendingLeaf[] }
+  >();
 
   for (const item of spending) {
     const category = item.categoryId
@@ -63,10 +72,10 @@ export async function groupSpendingByCategoryGroup(
 
     let entry = totals.get(key);
     if (!entry) {
-      entry = { group, total: 0, categories: [] };
+      entry = { group, totalCents: 0, categories: [] };
       totals.set(key, entry);
     }
-    entry.total += item.total;
+    entry.totalCents += Math.round(item.total * 100);
 
     if (category) {
       entry.categories.push({
@@ -80,9 +89,11 @@ export async function groupSpendingByCategoryGroup(
     }
   }
 
-  for (const entry of totals.values()) {
-    entry.categories.sort((a, b) => b.total - a.total);
-  }
-
-  return Array.from(totals.values()).sort((a, b) => b.total - a.total);
+  return Array.from(totals.values())
+    .map((entry) => ({
+      group: entry.group,
+      total: entry.totalCents / 100,
+      categories: [...entry.categories].sort((a, b) => b.total - a.total),
+    }))
+    .sort((a, b) => b.total - a.total);
 }

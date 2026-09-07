@@ -277,6 +277,7 @@ export async function getCategorySpending(req: Request, res: Response) {
       categoryId: item.categoryId,
       total: Number(item._sum.amount ?? 0),
     })),
+    [userId],
   );
 
   res.status(200).json({ categorySpending });

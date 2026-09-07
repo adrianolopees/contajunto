@@ -285,11 +285,14 @@ describe("GET /groups", () => {
           expect.objectContaining({
             name: expect.any(String),
             id: expect.any(String),
-            email: expect.any(String),
           }),
         ]),
       },
     });
+    // membros veem só id/nome uns dos outros — e-mail não sai na resposta
+    for (const member of getGroup.body.group.users) {
+      expect(member).not.toHaveProperty("email");
+    }
   });
 });
 

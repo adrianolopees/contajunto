@@ -1,4 +1,5 @@
 import { Response, Request } from "express";
+import crypto from "node:crypto";
 import { Prisma } from "../generated/prisma/index.js";
 import z from "zod";
 import prisma from "../lib/prisma.js";
@@ -136,8 +137,9 @@ export async function getGroup(req: Request, res: Response) {
         select: {
           id: true,
           name: true,
+          // sem email: o front só usa id/nome, e expor menos por padrão custa nada
           users: {
-            select: { id: true, name: true, email: true },
+            select: { id: true, name: true },
           },
         },
       },
@@ -264,6 +266,7 @@ export async function getGroupCategorySpending(req: Request, res: Response) {
       categoryId: item.categoryId,
       total: Number(item._sum.amount ?? 0),
     })),
+    memberIds,
   );
 
   res.status(200).json({ categorySpending });

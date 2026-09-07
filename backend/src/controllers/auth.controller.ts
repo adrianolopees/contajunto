@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import z from "zod";
 import argon2 from "argon2";
 import prisma from "../lib/prisma.js";
+import { Prisma } from "../generated/prisma/index.js";
 import jwt from "jsonwebtoken";
 import crypto from "node:crypto";
 import { getCatalogVersion, syncUserCategories } from "../lib/categoryCatalog.js";
@@ -64,28 +65,42 @@ export async function register(req: Request, res: Response) {
     argon2.hash(password),
   ]);
 
-  const user = await prisma.$transaction(async (tx) => {
-    // recebe o catálogo inteiro agora, então já nasce carimbado com a versão
-    // corrente — o sync do login não tem nada a fazer por ele
-    const newUser = await tx.user.create({
-      data: { name, email, passwordHash, categoriesVersion: catalogVersion },
-      omit: { passwordHash: true, categoriesVersion: true },
+  try {
+    const user = await prisma.$transaction(async (tx) => {
+      // recebe o catálogo inteiro agora, então já nasce carimbado com a versão
+      // corrente — o sync do login não tem nada a fazer por ele
+      const newUser = await tx.user.create({
+        data: { name, email, passwordHash, categoriesVersion: catalogVersion },
+        omit: { passwordHash: true, categoriesVersion: true },
+      });
+
+      await tx.category.createMany({
+        data: defaultCategories.map((cat) => ({
+          type: cat.type,
+          name: cat.name,
+          color: cat.color,
+          icon: cat.icon,
+          groupId: cat.groupId,
+          userId: newUser.id,
+        })),
+      });
+      return newUser;
     });
 
-    await tx.category.createMany({
-      data: defaultCategories.map((cat) => ({
-        type: cat.type,
-        name: cat.name,
-        color: cat.color,
-        icon: cat.icon,
-        groupId: cat.groupId,
-        userId: newUser.id,
-      })),
-    });
-    return newUser;
-  });
-
-  res.status(201).json({ user });
+    res.status(201).json({ user });
+  } catch (err) {
+    // dois registros do mesmo e-mail em paralelo passam pelo findUnique acima
+    // e um deles cai na constraint — é o mesmo 409 do caminho normal, não o
+    // "Resource already exists" genérico do middleware
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err.code === "P2002"
+    ) {
+      res.status(409).json({ message: "Email already in use" });
+      return;
+    }
+    throw err;
+  }
 }
 
 export async function login(req: Request, res: Response) {
