@@ -4,6 +4,7 @@ import argon2 from "argon2";
 import prisma from "../lib/prisma.js";
 import jwt from "jsonwebtoken";
 import crypto from "node:crypto";
+import { CATEGORY_CATALOG_VERSION, syncUserCategories } from "../lib/categoryCatalog.js";
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
@@ -62,8 +63,8 @@ export async function register(req: Request, res: Response) {
 
   const user = await prisma.$transaction(async (tx) => {
     const newUser = await tx.user.create({
-      data: { name, email, passwordHash },
-      omit: { passwordHash: true },
+      data: { name, email, passwordHash, categoriesVersion: CATEGORY_CATALOG_VERSION },
+      omit: { passwordHash: true, categoriesVersion: true },
     });
 
     await tx.category.createMany({
@@ -98,6 +99,10 @@ export async function login(req: Request, res: Response) {
   if (!passwordMatch) {
     res.status(401).json({ message: "Invalid credentials" });
     return;
+  }
+
+  if (user.categoriesVersion < CATEGORY_CATALOG_VERSION) {
+    await syncUserCategories(user.id);
   }
 
   const accessToken = jwt.sign({ userId: user.id }, JWT_SECRET, {

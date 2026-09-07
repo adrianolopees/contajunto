@@ -3,24 +3,24 @@ generator client {
   output   = "../src/generated/prisma"
 }
 
-
 datasource db {
   provider = "postgresql"
 }
 
 model User {
-  id            String       @id @default(uuid())
-  name          String
-  email         String       @unique
-  passwordHash  String
-  monthlyBudget Decimal?     @db.Decimal(10, 2)
-  createdAt     DateTime     @default(now())
-  familyGroupId String?
-  familyGroup   FamilyGroup? @relation(fields: [familyGroupId], references: [id])
-  categories Category[]
-  transactions  Transaction[]
-  refreshTokens RefreshToken[]
-  cards         Card[]
+  id                String         @id @default(uuid())
+  name              String
+  email             String         @unique
+  passwordHash      String
+  monthlyBudget     Decimal?       @db.Decimal(10, 2)
+  categoriesVersion Int            @default(1)
+  createdAt         DateTime       @default(now())
+  familyGroupId     String?
+  familyGroup       FamilyGroup?   @relation(fields: [familyGroupId], references: [id])
+  categories        Category[]
+  transactions      Transaction[]
+  refreshTokens     RefreshToken[]
+  cards             Card[]
 
   @@index([familyGroupId])
 }
@@ -35,29 +35,29 @@ model RefreshToken {
 }
 
 model FamilyGroup {
-  id           String        @id @default(uuid())
-  name         String
-  inviteCode   String        @unique @default(uuid())
-  users        User[]
+  id         String @id @default(uuid())
+  name       String
+  inviteCode String @unique @default(uuid())
+  users      User[]
 }
 
 model Transaction {
-  id            String      @id @default(uuid())
-  amount        Decimal     @db.Decimal(10, 2)
+  id            String          @id @default(uuid())
+  amount        Decimal         @db.Decimal(10, 2)
   type          TransactionType
   paymentMethod PaymentMethod?
   description   String
   categoryId    String?
-  category      Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  category      Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   cardId        String?
-  card          Card? @relation(fields: [cardId], references: [id], onDelete: SetNull)
+  card          Card?           @relation(fields: [cardId], references: [id], onDelete: SetNull)
   date          DateTime
   month         Int
   year          Int
   aiRawInput    String?
-  createdAt     DateTime    @default(now())
+  createdAt     DateTime        @default(now())
   userId        String
-  user          User        @relation(fields: [userId], references: [id])
+  user          User            @relation(fields: [userId], references: [id])
 
   @@index([userId, year, month])
   @@index([categoryId])
@@ -79,17 +79,18 @@ model Card {
 }
 
 model Category {
-  id            String        @id @default(uuid())
-  type          TransactionType
-  name          String
-  color         String
-  icon          String
-  transactions  Transaction[]
-  userId        String
-  user          User @relation(fields: [userId], references: [id])
-  groupId       String
-  group         CategoryGroup @relation(fields: [groupId], references: [id])
-  @@unique([userId, name])
+  id           String          @id @default(uuid())
+  type         TransactionType
+  name         String
+  color        String
+  icon         String
+  transactions Transaction[]
+  userId       String
+  user         User            @relation(fields: [userId], references: [id])
+  groupId      String
+  group        CategoryGroup   @relation(fields: [groupId], references: [id])
+
+  @@unique([userId, groupId, name])
 }
 
 model CategoryGroup {
@@ -103,13 +104,13 @@ model CategoryGroup {
 }
 
 model DefaultCategory {
-  id      String @id @default(uuid())
+  id      String          @id @default(uuid())
   type    TransactionType
   name    String
   color   String
   icon    String
   groupId String
-  group   CategoryGroup @relation(fields: [groupId], references: [id])
+  group   CategoryGroup   @relation(fields: [groupId], references: [id])
 
   @@unique([groupId, name])
 }

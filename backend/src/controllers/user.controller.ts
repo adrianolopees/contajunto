@@ -43,7 +43,7 @@ export async function updateMe(req: Request, res: Response) {
   const userUpdated = await prisma.user.update({
     where: { id: req.user.id },
     data: { name, monthlyBudget },
-    omit: { passwordHash: true },
+    omit: { passwordHash: true, categoriesVersion: true },
   });
 
   res.status(200).json({ user: userUpdated });
