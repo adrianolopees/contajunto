@@ -212,9 +212,6 @@ export default function Dashboard() {
               {formatCurrency(summary?.balance ?? 0)}
             </p>
           </div>
-          {view === "personal" && (
-            <BudgetBar spent={summary?.expense ?? 0} budget={monthlyBudget} />
-          )}
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-lg bg-white/10 p-2">
               <p className="text-xs opacity-80">Entradas</p>
@@ -232,11 +229,16 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
-      {paceOverBudget !== null && (
-        <p className="-mt-2 px-1 text-xs text-amber-600 dark:text-amber-500">
-          No ritmo atual, você fecha o mês ~{formatCurrency(paceOverBudget)}{" "}
-          acima do teto.
-        </p>
+      {view === "personal" && (
+        <div className="-mt-2 space-y-1 px-1">
+          <BudgetBar spent={summary?.expense ?? 0} budget={monthlyBudget} />
+          {paceOverBudget !== null && (
+            <p className="text-xs text-amber-600 dark:text-amber-500">
+              No ritmo atual, você fecha o mês ~
+              {formatCurrency(paceOverBudget)} acima do teto.
+            </p>
+          )}
+        </div>
       )}
 
       {view === "family" && group && (
@@ -283,7 +285,7 @@ export default function Dashboard() {
           <div className="space-y-4">
             <DonutChart
               data={toDonutSlices(categorySpending)}
-              size={220}
+              size={280}
               centerLabel="Total"
               centerValue={formatCurrency(
                 categorySpending.reduce((sum, c) => sum + c.total, 0),

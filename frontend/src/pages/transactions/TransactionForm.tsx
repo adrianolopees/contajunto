@@ -373,13 +373,24 @@ export default function TransactionForm() {
             })}
           </div>
         </div>
-
+        <div className="space-y-1">
+          <Input
+            {...form.register("description")}
+            id="description"
+            type="text"
+            placeholder="Descriçao (opcional)"
+            aria-label="Nota"
+            className="py-2"
+          />
+          {form.formState.errors.description?.message && (
+            <p className="text-sm text-destructive">
+              {form.formState.errors.description.message}
+            </p>
+          )}
+        </div>
         {/* Meio de pagamento: só faz sentido pra gasto */}
         {type === "EXPENSE" && (
           <div>
-            <p className="mb-2 text-sm font-medium text-muted-foreground">
-              Como pagou
-            </p>
             <div className="grid grid-cols-4 gap-2">
               {PAYMENT_METHODS.map(({ value, label, icon: Icon }) => (
                 <button
@@ -462,10 +473,6 @@ export default function TransactionForm() {
 
         {/* Categoria: busca + grupos expansíveis */}
         <div>
-          <p className="mb-2 text-sm font-medium text-muted-foreground">
-            Categoria
-          </p>
-
           {selectedCategory && (
             <div className="mb-2 flex items-center gap-2 rounded-lg border border-primary bg-primary/10 p-2 text-sm">
               <CategoryBadge
@@ -496,6 +503,7 @@ export default function TransactionForm() {
             type="text"
             placeholder="Buscar categoria"
             aria-label="Buscar categoria"
+            className="py-2"
           />
 
           <div className="mt-2 space-y-2">
@@ -586,21 +594,6 @@ export default function TransactionForm() {
               })
             )}
           </div>
-        </div>
-
-        <div className="space-y-1">
-          <Input
-            {...form.register("description")}
-            id="description"
-            type="text"
-            placeholder="Descriçao (opcional)"
-            aria-label="Nota"
-          />
-          {form.formState.errors.description?.message && (
-            <p className="text-sm text-destructive">
-              {form.formState.errors.description.message}
-            </p>
-          )}
         </div>
 
         <div className="flex items-center justify-between gap-2 pb-8">
