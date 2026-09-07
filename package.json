@@ -16,7 +16,14 @@
     "lint-staged": "^16.4.0"
   },
   "lint-staged": {
-    "backend/src/**/*.ts": "bash -c './backend/node_modules/.bin/tsc --noEmit --project backend/tsconfig.json'"
+    "backend/src/**/*.ts": [
+      "bash -c './backend/node_modules/.bin/tsc --noEmit --project backend/tsconfig.json'",
+      "bash -c 'cd backend && ./node_modules/.bin/eslint src'"
+    ],
+    "frontend/src/**/*.{ts,tsx}": [
+      "bash -c 'cd frontend && ./node_modules/.bin/tsc -b'",
+      "bash -c 'cd frontend && ./node_modules/.bin/eslint src'"
+    ]
   },
   "dependencies": {
     "@fontsource-variable/manrope": "^5.3.0"

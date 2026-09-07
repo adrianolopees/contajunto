@@ -1,11 +1,13 @@
 import "dotenv/config";
 import argon2 from "argon2";
-import prisma from "../src/lib/prisma.js";
-import { getBusinessMonthYear } from "../src/lib/date.js";
-import type { TransactionType } from "../src/generated/prisma/index.js";
+import prisma from "../lib/prisma.js";
+import { getBusinessMonthYear } from "../lib/date.js";
+import { getCatalogVersion } from "../lib/categoryCatalog.js";
+import type { Prisma, TransactionType } from "../generated/prisma/index.js";
 
 // Dados fixos de teste — reexecutável a qualquer momento (apaga e recria só
-// essas duas contas, sem tocar em nenhum outro dado do banco)
+// essas duas contas, sem tocar em nenhum outro dado do banco).
+// Rodar depois do `npm run seed`: as transações apontam pra nomes do catálogo.
 const GROUP_NAME = "Família Teste";
 const TEST_PASSWORD = "teste1234";
 const TEST_USERS = [
@@ -13,13 +15,6 @@ const TEST_USERS = [
   { name: "Bruno Teste", email: "bruno@teste.com", baseSalary: 4800 },
 ];
 const MONTHS_BACK = 4; // mês atual + 3 anteriores
-
-const LIMITS: Record<string, number> = {
-  Supermercado: 600,
-  Internet: 100,
-  Streaming: 60,
-  "Cinema e shows": 150,
-};
 
 interface Template {
   category: string;
@@ -39,16 +34,16 @@ const EXPENSE_TEMPLATES: Template[] = [
   { category: "Aluguel", descriptions: ["Aluguel do apartamento"], min: 1200, max: 1800 },
   { category: "Estacionamentos", descriptions: ["Estacionamento shopping"], min: 10, max: 40 },
   { category: "Postos de gasolina", descriptions: ["Combustível"], min: 100, max: 250 },
-  { category: "Táxi e transporte privado urbano", descriptions: ["Uber", "99"], min: 15, max: 60 },
+  { category: "Uber/99", descriptions: ["Uber", "99"], min: 15, max: 60 },
   { category: "Transporte público", descriptions: ["Recarga bilhete único"], min: 20, max: 60 },
   { category: "Farmácia", descriptions: ["Remédios", "Farmácia"], min: 20, max: 120 },
   { category: "Academia", descriptions: ["Mensalidade academia"], min: 90, max: 150 },
   { category: "Streaming", descriptions: ["Netflix", "Spotify"], min: 20, max: 55 },
   { category: "Cinema e shows", descriptions: ["Cinema", "Show"], min: 40, max: 150 },
-  { category: "Viagens", descriptions: ["Passagem", "Hospedagem"], min: 150, max: 900 },
+  { category: "Passagens", descriptions: ["Passagem", "Hospedagem"], min: 150, max: 900 },
   { category: "Hobbies", descriptions: ["Material de hobby"], min: 30, max: 120 },
   { category: "Compras online", descriptions: ["Compra Shopee", "Compra Amazon"], min: 30, max: 200 },
-  { category: "Compras", descriptions: ["Roupas novas"], min: 50, max: 300 },
+  { category: "Roupas", descriptions: ["Roupas novas"], min: 50, max: 300 },
   { category: "Cursos", descriptions: ["Curso online"], min: 50, max: 250 },
   { category: "Veterinário", descriptions: ["Consulta veterinária"], min: 80, max: 300 },
   { category: "Petshop", descriptions: ["Ração e petiscos"], min: 40, max: 120 },
@@ -106,19 +101,24 @@ function buildTransaction(
   year: number,
   month: number,
   noCategoryChance: number,
-) {
+): Prisma.TransactionCreateManyInput {
   const category = categories.find((c) => c.name === template.category);
+  if (!category) {
+    // nome saiu do catálogo e ninguém atualizou o template: falhar alto é
+    // melhor que semear silenciosamente uma pilha de "Sem categoria"
+    throw new Error(`Template aponta pra categoria inexistente: "${template.category}"`);
+  }
   const date = randomDateInMonth(year, month);
   const { month: businessMonth, year: businessYear } =
     getBusinessMonthYear(date);
-  const useCategory = category && Math.random() > noCategoryChance;
+  const useCategory = Math.random() > noCategoryChance;
 
   return {
     userId,
     type,
     amount: randomAmount(template.min, template.max),
     description: Math.random() > 0.2 ? pick(template.descriptions) : "",
-    categoryId: useCategory ? category!.id : null,
+    categoryId: useCategory ? category.id : null,
     date,
     month: businessMonth,
     year: businessYear,
@@ -153,7 +153,14 @@ async function cleanupExisting(emails: string[]) {
 async function main() {
   await cleanupExisting(TEST_USERS.map((u) => u.email));
 
-  const defaultCategories = await prisma.defaultCategory.findMany();
+  const [defaultCategories, catalogVersion] = await Promise.all([
+    prisma.defaultCategory.findMany(),
+    getCatalogVersion(),
+  ]);
+  if (defaultCategories.length === 0) {
+    throw new Error("Catálogo vazio — rode `npm run seed` antes.");
+  }
+
   const group = await prisma.familyGroup.create({
     data: { name: GROUP_NAME },
   });
@@ -170,6 +177,7 @@ async function main() {
           email: testUser.email,
           passwordHash,
           familyGroupId: group.id,
+          categoriesVersion: catalogVersion,
         },
       });
 
@@ -192,19 +200,7 @@ async function main() {
       select: { id: true, name: true, type: true },
     });
 
-    for (const [name, monthlyLimit] of Object.entries(LIMITS)) {
-      const category = categories.find((c) => c.name === name);
-      if (category) {
-        await prisma.category.update({
-          where: { id: category.id },
-          data: { monthlyLimit },
-        });
-      }
-    }
-
-    const transactions: Parameters<
-      typeof prisma.transaction.createMany
-    >[0]["data"] = [];
+    const transactions: Prisma.TransactionCreateManyInput[] = [];
 
     for (const { year, month } of monthsBack(new Date(), MONTHS_BACK)) {
       const salaryDate = new Date(year, month - 1, 5, 9, 0);

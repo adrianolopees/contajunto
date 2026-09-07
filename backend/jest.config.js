@@ -20,6 +20,9 @@ const config = {
   },
   testMatch: ['**/tests/**/*.test.ts'],
   setupFiles: ['./src/tests/setup.ts'],
+  // dist/ tem uma cópia do Prisma Client gerado (copy-generated.mjs); sem isto
+  // o haste map do jest reclama de package.json duplicado depois de um build
+  modulePathIgnorePatterns: ['<rootDir>/dist'],
 }
 
 export default config

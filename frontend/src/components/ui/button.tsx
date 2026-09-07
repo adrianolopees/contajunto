@@ -56,4 +56,6 @@ function Button({
   );
 }
 
-export { Button, buttonVariants };
+// buttonVariants não é exportado de propósito: só é usado aqui, e exportar
+// não-componente quebra o Fast Refresh (react-refresh/only-export-components)
+export { Button };

@@ -51,8 +51,10 @@ describe("POST /auth/register", () => {
   });
 
   it("should copy all default categories automatically on register", async () => {
-    const defaultsRes = await request(app).get("/api/categories/default");
-    const totalDefaults = defaultsRes.body.categoriesDefault.length;
+    // o pretest semeia o catálogo real no banco de teste — sem ele isto
+    // passaria vazio (0 === 0), que foi como o bug do @@unique passou verde
+    const totalDefaults = await prisma.defaultCategory.count();
+    expect(totalDefaults).toBeGreaterThan(0);
 
     const res = await request(app).post("/api/auth/register").send(testUser);
 
@@ -70,11 +72,10 @@ describe("POST /auth/register", () => {
   });
 
   it("should ignore defaultCategoryIds sent in body and still copy all default categories", async () => {
-    const defaultsRes = await request(app).get("/api/categories/default");
-    const totalDefaults = defaultsRes.body.categoriesDefault.length;
-    const firstTwo = defaultsRes.body.categoriesDefault
-      .slice(0, 2)
-      .map((c: { id: string }) => c.id);
+    const totalDefaults = await prisma.defaultCategory.count();
+    const firstTwo = (
+      await prisma.defaultCategory.findMany({ select: { id: true }, take: 2 })
+    ).map((c) => c.id);
 
     const res = await request(app)
       .post("/api/auth/register")

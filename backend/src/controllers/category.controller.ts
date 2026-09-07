@@ -11,12 +11,3 @@ export async function getCategories(req: Request, res: Response) {
 
   res.status(200).json({ categories });
 }
-
-export async function getDefaultCategories(req: Request, res: Response) {
-  const categoriesDefault = await prisma.defaultCategory.findMany({
-    include: { group: true },
-    orderBy: { name: "asc" },
-  });
-
-  res.status(200).json({ categoriesDefault });
-}
