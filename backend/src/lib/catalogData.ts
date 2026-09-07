@@ -1,13 +1,15 @@
-import "dotenv/config";
-import prisma from "../src/lib/prisma.js";
-import type { TransactionType } from "../src/generated/prisma/index.js";
+import type { TransactionType } from "../generated/prisma/index.js";
 
-interface SubcategorySeed {
+// Catálogo curado de categorias. Este é o arquivo que se edita pra mudar o
+// catálogo; o seed (catalogSeed.ts) detecta a mudança por hash e bumpa a
+// versão sozinho — não existe número de versão pra lembrar de incrementar.
+
+export interface SubcategorySeed {
   name: string;
   icon: string;
 }
 
-interface GroupSeed {
+export interface GroupSeed {
   type: TransactionType;
   name: string;
   color: string;
@@ -15,7 +17,7 @@ interface GroupSeed {
   subcategories: SubcategorySeed[];
 }
 
-const groups: GroupSeed[] = [
+export const groups: GroupSeed[] = [
   // Despesas — cada grupo termina com um "Outros" próprio, pra um gasto
   // atípico não sair do total do grupo certo
   {
@@ -301,74 +303,3 @@ const groups: GroupSeed[] = [
     subcategories: [{ name: "Outros", icon: "Plus" }],
   },
 ];
-
-async function main() {
-  // upsert em vez de deleteMany+create: Category.groupId é permanente agora
-  // (não existe mais delete de categoria), então apagar um CategoryGroup em
-  // uso quebraria a FK de quem já herdou o catálogo no registro
-  let totalSubcategories = 0;
-
-  for (const group of groups) {
-    const categoryGroup = await prisma.categoryGroup.upsert({
-      where: { name: group.name },
-      update: { type: group.type, color: group.color, icon: group.icon },
-      create: {
-        type: group.type,
-        name: group.name,
-        color: group.color,
-        icon: group.icon,
-      },
-    });
-
-    await prisma.defaultCategory.deleteMany({
-      where: {
-        groupId: categoryGroup.id,
-        name: { notIn: group.subcategories.map((sub) => sub.name) },
-      },
-    });
-
-    for (const sub of group.subcategories) {
-      await prisma.defaultCategory.upsert({
-        where: { groupId_name: { groupId: categoryGroup.id, name: sub.name } },
-        update: { type: group.type, color: group.color, icon: sub.icon },
-        create: {
-          type: group.type,
-          name: sub.name,
-          color: group.color,
-          icon: sub.icon,
-          groupId: categoryGroup.id,
-        },
-      });
-    }
-    totalSubcategories += group.subcategories.length;
-  }
-
-  const currentNames = groups.map((g) => g.name);
-  const staleGroups = await prisma.categoryGroup.findMany({
-    where: { name: { notIn: currentNames } },
-    include: { _count: { select: { categories: true } } },
-  });
-  for (const stale of staleGroups) {
-    if (stale._count.categories === 0) {
-      await prisma.defaultCategory.deleteMany({ where: { groupId: stale.id } });
-      await prisma.categoryGroup.delete({ where: { id: stale.id } });
-    } else {
-      console.warn(
-        `Grupo "${stale.name}" saiu do catálogo mas ${stale._count.categories} usuário(s) já o possuem — mantido.`,
-      );
-    }
-  }
-
-  console.log(
-    `${groups.length} grupos e ${totalSubcategories} categorias padrão sincronizadas.`,
-  );
-}
-
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });

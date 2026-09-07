@@ -1,12 +1,20 @@
 import prisma from "./prisma.js";
+import { CATALOG_META_ID } from "./catalogSeed.js";
 
-// Incrementar manualmente sempre que o catálogo em prisma/seed.ts mudar de
-// forma relevante (categoria nova, grupo novo) — é o que faz usuários
-// existentes (categoriesVersion desatualizado) receberem a atualização no
-// próximo login.
-export const CATEGORY_CATALOG_VERSION = 2;
+// Versão corrente do catálogo, escrita só pelo seed (CatalogMeta). Sem linha
+// (banco nunca semeado) = 0: ninguém sincroniza, ninguém é marcado como em dia.
+export async function getCatalogVersion(): Promise<number> {
+  const meta = await prisma.catalogMeta.findUnique({
+    where: { id: CATALOG_META_ID },
+    select: { version: true },
+  });
+  return meta?.version ?? 0;
+}
 
-export async function syncUserCategories(userId: string) {
+// Copia pro usuário as DefaultCategory que ele ainda não tem (por groupId+name)
+// e carimba a versão que acabou de ser aplicada — sempre a lida do banco, nunca
+// uma constante, pra não marcar "em dia" contra um catálogo que ainda não subiu.
+export async function syncUserCategories(userId: string, catalogVersion: number) {
   const [defaultCategories, existing] = await Promise.all([
     prisma.defaultCategory.findMany(),
     prisma.category.findMany({
@@ -38,6 +46,6 @@ export async function syncUserCategories(userId: string) {
 
   await prisma.user.update({
     where: { id: userId },
-    data: { categoriesVersion: CATEGORY_CATALOG_VERSION },
+    data: { categoriesVersion: catalogVersion },
   });
 }

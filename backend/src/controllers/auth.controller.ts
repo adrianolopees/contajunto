@@ -4,7 +4,7 @@ import argon2 from "argon2";
 import prisma from "../lib/prisma.js";
 import jwt from "jsonwebtoken";
 import crypto from "node:crypto";
-import { CATEGORY_CATALOG_VERSION, syncUserCategories } from "../lib/categoryCatalog.js";
+import { getCatalogVersion, syncUserCategories } from "../lib/categoryCatalog.js";
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
@@ -57,13 +57,17 @@ export async function register(req: Request, res: Response) {
     return;
   }
 
-  const defaultCategories = await prisma.defaultCategory.findMany();
-
-  const passwordHash = await argon2.hash(password);
+  const [defaultCategories, catalogVersion, passwordHash] = await Promise.all([
+    prisma.defaultCategory.findMany(),
+    getCatalogVersion(),
+    argon2.hash(password),
+  ]);
 
   const user = await prisma.$transaction(async (tx) => {
+    // recebe o catálogo inteiro agora, então já nasce carimbado com a versão
+    // corrente — o sync do login não tem nada a fazer por ele
     const newUser = await tx.user.create({
-      data: { name, email, passwordHash, categoriesVersion: CATEGORY_CATALOG_VERSION },
+      data: { name, email, passwordHash, categoriesVersion: catalogVersion },
       omit: { passwordHash: true, categoriesVersion: true },
     });
 
@@ -101,8 +105,9 @@ export async function login(req: Request, res: Response) {
     return;
   }
 
-  if (user.categoriesVersion < CATEGORY_CATALOG_VERSION) {
-    await syncUserCategories(user.id);
+  const catalogVersion = await getCatalogVersion();
+  if (user.categoriesVersion < catalogVersion) {
+    await syncUserCategories(user.id, catalogVersion);
   }
 
   const accessToken = jwt.sign({ userId: user.id }, JWT_SECRET, {

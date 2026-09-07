@@ -115,6 +115,17 @@ model DefaultCategory {
   @@unique([groupId, name])
 }
 
+// Singleton (id = 1). `version` é escrita SÓ pelo seed, que a incrementa quando
+// o hash do catálogo muda — o login compara User.categoriesVersion com isto, e
+// não com uma constante em código. Assim deploy e seed não conseguem divergir:
+// enquanto o seed não roda, ninguém é marcado como "em dia".
+model CatalogMeta {
+  id          Int      @id @default(1)
+  version     Int
+  contentHash String
+  updatedAt   DateTime @updatedAt
+}
+
 enum TransactionType {
   INCOME
   EXPENSE
