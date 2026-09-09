@@ -234,8 +234,8 @@ export default function Dashboard() {
           <BudgetBar spent={summary?.expense ?? 0} budget={monthlyBudget} />
           {paceOverBudget !== null && (
             <p className="text-xs text-amber-600 dark:text-amber-500">
-              No ritmo atual, você fecha o mês ~
-              {formatCurrency(paceOverBudget)} acima do teto.
+              No ritmo atual, você fecha o mês ~{formatCurrency(paceOverBudget)}{" "}
+              acima do teto.
             </p>
           )}
         </div>
@@ -294,7 +294,24 @@ export default function Dashboard() {
             <ExpandableCategoryGroups
               groups={categorySpending.map((item) => ({
                 group: item.group ?? UNCATEGORIZED_GROUP,
-                items: item.categories,
+                // "Sem categoria" não tem subcategoria real pra listar — o
+                // backend devolve `categories: []` pra esse grupo. Sem um
+                // item aqui não existe o que expandir, então criamos um leaf
+                // sintético (id fixo "uncategorized") que o renderItem
+                // reconhece e trata à parte, expandindo direto pras
+                // transações sem categoria em vez de um link pra categoria
+                items: item.group
+                  ? item.categories
+                  : [
+                      {
+                        id: "uncategorized",
+                        name: "Sem categoria",
+                        color: UNCATEGORIZED_COLOR,
+                        icon: "Circle",
+                        userId: "", // não usado: o renderItem trata este id antes de checar ownership
+                        total: item.total,
+                      },
+                    ],
                 total: item.total,
               }))}
               totalForPercentage={categorySpending.reduce(
@@ -303,18 +320,107 @@ export default function Dashboard() {
               )}
               getItemKey={(item) => item.id}
               renderItem={(item: CategorySpendingLeaf) => {
+                if (item.id === "uncategorized") {
+                  const isExpanded = expandedMemberCategoryId === item.id;
+                  // sem categoryId pra casar contra — filtra por ausência
+                  // de categoria, não por item.id como as outras subcategorias
+                  const uncategorizedTransactions = transactions.filter(
+                    (t) => !t.category,
+                  );
+
+                  return (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpandedMemberCategoryId(
+                            isExpanded ? null : item.id,
+                          )
+                        }
+                        className="flex w-full items-center gap-3 p-3 pl-4 text-left text-sm"
+                      >
+                        <CategoryBadge
+                          icon={item.icon}
+                          color={item.color}
+                          size={24}
+                          variant="subtle"
+                        />
+                        <span className="min-w-0 flex-1 truncate">
+                          {item.name}
+                        </span>
+                        <span className="shrink-0 font-medium">
+                          {formatCurrency(item.total)}
+                        </span>
+                        {isExpanded ? (
+                          <ChevronUp
+                            size={14}
+                            className="shrink-0 text-muted-foreground"
+                          />
+                        ) : (
+                          <ChevronDown
+                            size={14}
+                            className="shrink-0 text-muted-foreground"
+                          />
+                        )}
+                      </button>
+                      {isExpanded && (
+                        <ul className="divide-y border-t bg-muted/30">
+                          {uncategorizedTransactions.map((t) => {
+                            // ao contrário da lista de outro membro (nunca
+                            // editável), aqui pode ser transação própria —
+                            // sem "user" (view pessoal) ou "user" === eu
+                            const isOwnTx =
+                              !("user" in t) || t.user.id === user?.id;
+                            const rowClassName =
+                              "flex items-center justify-between gap-3 p-3 pl-16 text-xs";
+                            const content = (
+                              <>
+                                <span className="min-w-0 flex-1 truncate text-muted-foreground">
+                                  {t.description || "Sem descrição"} ·{" "}
+                                  {formatRelativeDay(t.date)}
+                                  {"user" in t &&
+                                    ` · ${t.user.name.split(" ")[0]}`}
+                                </span>
+                                <span className="shrink-0 font-medium text-expense">
+                                  -{formatCurrency(Number(t.amount))}
+                                </span>
+                              </>
+                            );
+
+                            return (
+                              <li key={t.id}>
+                                {isOwnTx ? (
+                                  <Link
+                                    to={`/transactions/${t.id}/edit`}
+                                    className={rowClassName}
+                                  >
+                                    {content}
+                                  </Link>
+                                ) : (
+                                  <div className={rowClassName}>{content}</div>
+                                )}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </>
+                  );
+                }
+
                 const isOwn = view === "personal" || item.userId === user?.id;
 
                 if (isOwn) {
                   return (
                     <Link
                       to={`/categories/${item.id}`}
-                      className="flex items-center gap-3 p-3 pl-12 text-sm"
+                      className="flex items-center gap-3 p-3 pl-4 text-sm"
                     >
                       <CategoryBadge
                         icon={item.icon}
                         color={item.color}
                         size={24}
+                        variant="subtle"
                       />
                       <span className="min-w-0 flex-1 truncate">
                         {item.name}
@@ -349,6 +455,7 @@ export default function Dashboard() {
                         icon={item.icon}
                         color={item.color}
                         size={24}
+                        variant="subtle"
                       />
                       <div className="min-w-0 flex-1">
                         <p className="truncate">{item.name}</p>
@@ -417,6 +524,7 @@ export default function Dashboard() {
                     icon={transaction.category?.icon ?? "Circle"}
                     color={transaction.category?.color ?? UNCATEGORIZED_COLOR}
                     size={32}
+                    variant="subtle"
                   />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">

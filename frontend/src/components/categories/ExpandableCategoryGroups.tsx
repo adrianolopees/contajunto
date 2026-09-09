@@ -44,7 +44,12 @@ export default function ExpandableCategoryGroups<T>({
               onClick={() => setExpandedGroupId(isExpanded ? null : group.id)}
               className="flex w-full items-center gap-3 p-3 text-left"
             >
-              <CategoryBadge icon={group.icon} color={group.color} size={36} />
+              <CategoryBadge
+                icon={group.icon}
+                color={group.color}
+                size={36}
+                variant="bold"
+              />
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium">{group.name}</p>
                 <p className="text-xs text-muted-foreground">

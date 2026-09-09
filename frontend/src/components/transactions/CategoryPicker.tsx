@@ -71,7 +71,11 @@ export default function CategoryPicker({
     <div>
       {selected && (
         <div className="mb-2 flex items-center gap-2 rounded-lg border border-primary bg-primary/10 p-2 text-sm">
-          <CategoryBadge icon={selected.icon} color={selected.color} size={24} />
+          <CategoryBadge
+            icon={selected.icon}
+            color={selected.color}
+            size={24}
+          />
           <span className="min-w-0 flex-1 truncate font-medium">
             {selected.name}
           </span>
@@ -120,10 +124,7 @@ export default function CategoryPicker({
             const isExpanded =
               Boolean(searchTerm) || expandedGroupId === group.id;
             return (
-              <div
-                key={group.id}
-                className="overflow-hidden rounded-lg border"
-              >
+              <div key={group.id} className="overflow-hidden rounded-lg border">
                 <button
                   type="button"
                   onClick={() =>
@@ -133,7 +134,12 @@ export default function CategoryPicker({
                   }
                   className="flex w-full items-center gap-3 p-2 text-left text-sm"
                 >
-                  <CategoryBadge icon={group.icon} color={group.color} size={28} />
+                  <CategoryBadge
+                    icon={group.icon}
+                    color={group.color}
+                    size={28}
+                    variant="bold"
+                  />
                   <span className="min-w-0 flex-1 truncate font-medium">
                     {group.name}
                   </span>
@@ -157,7 +163,12 @@ export default function CategoryPicker({
                             : "hover:bg-muted",
                         )}
                       >
-                        <CategoryBadge icon={item.icon} color={item.color} size={28} />
+                        <CategoryBadge
+                          icon={item.icon}
+                          color={item.color}
+                          size={28}
+                          variant="subtle"
+                        />
                         {item.name}
                       </button>
                     ))}
