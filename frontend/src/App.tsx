@@ -58,7 +58,6 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/transactions" element={<TransactionList />} />
           <Route path="/transactions/new" element={<TransactionForm />} />
-          <Route path="/transactions/:id/edit" element={<TransactionForm />} />
           <Route path="/categories/:id" element={<CategoryDetail />} />
           <Route path="/bills" element={<Bills />} />
           <Route path="/familyGroup" element={<FamilyGroupPage />} />

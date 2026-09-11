@@ -1,33 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
-import { ArrowLeft, Check, Pencil, Repeat, Trash2, X } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { getCategories, type Category } from "@/services/categories";
-import {
-  deleteTransaction,
-  getTransactions,
-  updateTransaction,
-  type PaymentMethod,
-  type Transaction,
-} from "@/services/transactions";
+import { getTransactions, type Transaction } from "@/services/transactions";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import CategoryPicker, {
-  NO_CATEGORY,
-} from "@/components/transactions/CategoryPicker";
-import PaymentMethodPicker from "@/components/transactions/PaymentMethodPicker";
-import { PAYMENT_METHODS } from "@/lib/paymentMethods";
+import TransactionRow from "@/components/transactions/TransactionRow";
+import TransactionEditDialogs from "@/components/transactions/TransactionEditDialogs";
+import { useInlineTransactionEdit } from "@/hooks/useInlineTransactionEdit";
+import { useAuth } from "@/hooks/useAuth";
 import CategoryBadge from "@/components/CategoryBadge";
 import EmptyState from "@/components/EmptyState";
 import { cn } from "@/lib/utils";
-import { formatCurrency, formatTransactionTimestamp } from "@/lib/format";
+import { formatCurrency } from "@/lib/format";
 
 function previousMonth(month: number, year: number) {
   return month === 1 ? { month: 12, year: year - 1 } : { month: month - 1, year };
@@ -44,6 +29,7 @@ function isSameDay(a: Date, b: Date) {
 export default function CategoryDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [category, setCategory] = useState<Category | undefined>();
   const [allCategories, setAllCategories] = useState<Category[]>([]);
@@ -52,19 +38,6 @@ export default function CategoryDetail() {
   >([]);
   const [previousTotal, setPreviousTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-
-  // edição inline: qual transação está em cada modo, nunca mais de uma por vez
-  const [editingAmountId, setEditingAmountId] = useState<string | null>(null);
-  const [amountDraft, setAmountDraft] = useState("");
-  const [categoryPickerFor, setCategoryPickerFor] = useState<string | null>(
-    null,
-  );
-  const [paymentPickerFor, setPaymentPickerFor] = useState<string | null>(
-    null,
-  );
-  const [deleteConfirmFor, setDeleteConfirmFor] = useState<string | null>(
-    null,
-  );
 
   const loadData = useCallback(async () => {
     if (!id) return;
@@ -107,71 +80,7 @@ export default function CategoryDetail() {
     loadData();
   }, [loadData]);
 
-  function startEditAmount(transaction: Transaction) {
-    setEditingAmountId(transaction.id);
-    setAmountDraft(transaction.amount);
-  }
-
-  async function saveAmount(transactionId: string) {
-    const parsed = parseFloat(amountDraft.replace(",", "."));
-    if (isNaN(parsed) || parsed <= 0) {
-      toast.error("Valor inválido.");
-      return;
-    }
-    try {
-      await updateTransaction(transactionId, { amount: parsed });
-      toast.success("Valor atualizado!");
-      setEditingAmountId(null);
-      loadData();
-    } catch {
-      toast.error("Erro ao atualizar valor.");
-    }
-  }
-
-  async function handleChangeCategory(
-    transactionId: string,
-    newCategoryId: string,
-  ) {
-    try {
-      await updateTransaction(transactionId, {
-        categoryId: newCategoryId === NO_CATEGORY ? null : newCategoryId,
-      });
-      toast.success("Categoria atualizada!");
-      setCategoryPickerFor(null);
-      loadData();
-    } catch {
-      toast.error("Erro ao atualizar categoria.");
-    }
-  }
-
-  async function handleChangePaymentMethod(
-    transactionId: string,
-    method: PaymentMethod,
-  ) {
-    try {
-      await updateTransaction(transactionId, {
-        paymentMethod: method,
-        // cartão só vale com crédito — trocando pra outro método, limpa o cartão
-        cardId: method === "CREDIT" ? undefined : null,
-      });
-      toast.success("Forma de pagamento atualizada!");
-      setPaymentPickerFor(null);
-      loadData();
-    } catch {
-      toast.error("Erro ao atualizar forma de pagamento.");
-    }
-  }
-
-  async function handleDeleteConfirmed(transactionId: string) {
-    try {
-      await deleteTransaction(transactionId);
-      toast.success("Transação excluída!");
-      setDeleteConfirmFor(null);
-      loadData();
-    } catch {
-      toast.error("Erro ao excluir transação.");
-    }
-  }
+  const edit = useInlineTransactionEdit(loadData);
 
   if (isLoading || !category) {
     return (
@@ -207,13 +116,6 @@ export default function CategoryDetail() {
     return dayTotal;
   });
   const maxDay = Math.max(...last7Days, 1);
-
-  const categoryPickerTransaction = currentTransactions.find(
-    (t) => t.id === categoryPickerFor,
-  );
-  const paymentPickerTransaction = currentTransactions.find(
-    (t) => t.id === paymentPickerFor,
-  );
 
   return (
     <div className="space-y-4 px-4 py-4 pb-24">
@@ -288,179 +190,23 @@ export default function CategoryDetail() {
           <EmptyState message="Nenhuma transação nesta categoria." />
         ) : (
           <ul className="space-y-2">
-            {currentTransactions.map((transaction) => {
-              const paymentMeta = PAYMENT_METHODS.find(
-                (m) => m.value === transaction.paymentMethod,
-              );
-              const PaymentIcon = paymentMeta?.icon;
-              return (
-                <li key={transaction.id} className="rounded-lg border p-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">
-                        {transaction.description || "Sem descrição"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatTransactionTimestamp(transaction.date)}
-                      </p>
-                    </div>
-
-                    {editingAmountId === transaction.id ? (
-                      <div className="flex shrink-0 items-center gap-1">
-                        <Input
-                          value={amountDraft}
-                          onChange={(e) => setAmountDraft(e.target.value)}
-                          type="text"
-                          inputMode="decimal"
-                          autoFocus
-                          className="w-20 py-1 text-right text-sm"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => saveAmount(transaction.id)}
-                          aria-label="Salvar valor"
-                          className="text-income"
-                        >
-                          <Check size={16} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setEditingAmountId(null)}
-                          aria-label="Cancelar"
-                          className="text-muted-foreground"
-                        >
-                          <X size={16} />
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => startEditAmount(transaction)}
-                        className="flex shrink-0 items-center gap-1"
-                      >
-                        <span
-                          className={
-                            transaction.type === "INCOME"
-                              ? "font-medium text-income"
-                              : "font-medium text-expense"
-                          }
-                        >
-                          {transaction.type === "INCOME" ? "+" : "-"}
-                          {formatCurrency(Number(transaction.amount))}
-                        </span>
-                        <Pencil size={12} className="text-muted-foreground" />
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setCategoryPickerFor(transaction.id)}
-                      className="flex items-center gap-1 rounded-full border px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted"
-                    >
-                      <Repeat size={12} />
-                      {transaction.category?.name ?? "Sem categoria"}
-                    </button>
-
-                    {transaction.type === "EXPENSE" && (
-                      <button
-                        type="button"
-                        onClick={() => setPaymentPickerFor(transaction.id)}
-                        className="flex items-center gap-1 rounded-full border px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted"
-                      >
-                        {PaymentIcon && <PaymentIcon size={12} />}
-                        {paymentMeta?.label ?? "Forma de pagamento"}
-                      </button>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={() => setDeleteConfirmFor(transaction.id)}
-                      aria-label="Excluir transação"
-                      className="ml-auto text-muted-foreground transition-colors hover:text-destructive"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </li>
-              );
-            })}
+            {currentTransactions.map((transaction) => (
+              <TransactionRow
+                key={transaction.id}
+                transaction={transaction}
+                currentUserId={user!.id}
+                edit={edit}
+              />
+            ))}
           </ul>
         )}
       </div>
 
-      <Dialog
-        open={categoryPickerFor !== null}
-        onOpenChange={(open) => !open && setCategoryPickerFor(null)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Trocar categoria</DialogTitle>
-          </DialogHeader>
-          {categoryPickerTransaction && (
-            <CategoryPicker
-              categories={allCategories}
-              type={categoryPickerTransaction.type}
-              value={categoryPickerTransaction.categoryId ?? NO_CATEGORY}
-              onSelect={(newCategoryId) =>
-                handleChangeCategory(categoryPickerTransaction.id, newCategoryId)
-              }
-            />
-          )}
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={paymentPickerFor !== null}
-        onOpenChange={(open) => !open && setPaymentPickerFor(null)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Forma de pagamento</DialogTitle>
-          </DialogHeader>
-          {paymentPickerTransaction && (
-            <PaymentMethodPicker
-              value={paymentPickerTransaction.paymentMethod ?? "DEBIT"}
-              onSelect={(method) =>
-                handleChangePaymentMethod(paymentPickerTransaction.id, method)
-              }
-            />
-          )}
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={deleteConfirmFor !== null}
-        onOpenChange={(open) => !open && setDeleteConfirmFor(null)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Excluir transação?</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Essa ação não pode ser desfeita.
-          </p>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setDeleteConfirmFor(null)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={() =>
-                deleteConfirmFor && handleDeleteConfirmed(deleteConfirmFor)
-              }
-            >
-              Excluir
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <TransactionEditDialogs
+        edit={edit}
+        transactions={currentTransactions}
+        categories={allCategories}
+      />
     </div>
   );
 }

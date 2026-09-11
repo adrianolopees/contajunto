@@ -21,13 +21,20 @@ import {
   type GroupTransaction,
   type MemberSpending,
 } from "@/services/groups";
-import type { CategoryGroup } from "@/services/categories";
+import {
+  getCategories,
+  type Category,
+  type CategoryGroup,
+} from "@/services/categories";
 import { Card, CardContent } from "@/components/ui/card";
 import BudgetBar from "@/components/BudgetBar";
 import MonthPicker from "@/components/MonthPicker";
 import CategoryBadge from "@/components/CategoryBadge";
 import DonutChart from "@/components/DonutChart";
 import ExpandableCategoryGroups from "@/components/categories/ExpandableCategoryGroups";
+import TransactionRow from "@/components/transactions/TransactionRow";
+import TransactionEditDialogs from "@/components/transactions/TransactionEditDialogs";
+import { useInlineTransactionEdit } from "@/hooks/useInlineTransactionEdit";
 import { useMonthNavigation } from "@/hooks/useMonthNavigation";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -73,6 +80,7 @@ export default function Dashboard() {
     [],
   );
   const [memberSpending, setMemberSpending] = useState<MemberSpending[]>([]);
+  const [allCategories, setAllCategories] = useState<Category[]>([]);
   const [expandedMemberCategoryId, setExpandedMemberCategoryId] = useState<
     string | null
   >(null);
@@ -132,6 +140,14 @@ export default function Dashboard() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // categorias não dependem de mês/ano/view — busca só uma vez, pro
+  // CategoryPicker da edição inline de "Sem categoria"
+  useEffect(() => {
+    getCategories().then(setAllCategories);
+  }, []);
+
+  const edit = useInlineTransactionEdit(loadData);
 
   const recentTransactions = transactions.slice(0, 5);
 
@@ -364,44 +380,18 @@ export default function Dashboard() {
                         )}
                       </button>
                       {isExpanded && (
-                        <ul className="divide-y border-t bg-muted/30">
-                          {uncategorizedTransactions.map((t) => {
-                            // ao contrário da lista de outro membro (nunca
-                            // editável), aqui pode ser transação própria —
-                            // sem "user" (view pessoal) ou "user" === eu
-                            const isOwnTx =
-                              !("user" in t) || t.user.id === user?.id;
-                            const rowClassName =
-                              "flex items-center justify-between gap-3 p-3 pl-16 text-xs";
-                            const content = (
-                              <>
-                                <span className="min-w-0 flex-1 truncate text-muted-foreground">
-                                  {t.description || "Sem descrição"} ·{" "}
-                                  {formatRelativeDay(t.date)}
-                                  {"user" in t &&
-                                    ` · ${t.user.name.split(" ")[0]}`}
-                                </span>
-                                <span className="shrink-0 font-medium text-expense">
-                                  -{formatCurrency(Number(t.amount))}
-                                </span>
-                              </>
-                            );
-
-                            return (
-                              <li key={t.id}>
-                                {isOwnTx ? (
-                                  <Link
-                                    to={`/transactions/${t.id}/edit`}
-                                    className={rowClassName}
-                                  >
-                                    {content}
-                                  </Link>
-                                ) : (
-                                  <div className={rowClassName}>{content}</div>
-                                )}
-                              </li>
-                            );
-                          })}
+                        // TransactionRow decide sozinho se a transação é
+                        // editável (é a única fonte de verdade de ownership
+                        // agora — não precisamos mais checar isOwnTx aqui)
+                        <ul className="space-y-2 border-t bg-muted/30 p-3">
+                          {uncategorizedTransactions.map((t) => (
+                            <TransactionRow
+                              key={t.id}
+                              transaction={t}
+                              currentUserId={user!.id}
+                              edit={edit}
+                            />
+                          ))}
                         </ul>
                       )}
                     </>
@@ -414,7 +404,7 @@ export default function Dashboard() {
                   return (
                     <Link
                       to={`/categories/${item.id}`}
-                      className="flex items-center gap-3 p-3 pl-4 text-sm"
+                      className="flex items-center gap-3 p-3 pl-6 text-sm"
                     >
                       <CategoryBadge
                         icon={item.icon}
@@ -449,7 +439,7 @@ export default function Dashboard() {
                           isMemberExpanded ? null : item.id,
                         )
                       }
-                      className="flex w-full items-center gap-3 p-3 pl-12 text-left text-sm"
+                      className="flex w-full items-center gap-3 p-3 pl-6 text-left text-sm"
                     >
                       <CategoryBadge
                         icon={item.icon}
@@ -514,12 +504,17 @@ export default function Dashboard() {
           <EmptyState message="Nenhuma transação neste mês." />
         ) : (
           <ul>
-            {recentTransactions.map((transaction) => (
-              <li key={transaction.id}>
-                <Link
-                  to={`/transactions/${transaction.id}/edit`}
-                  className="flex items-center gap-3 py-3"
-                >
+            {recentTransactions.map((transaction) => {
+              // só transação própria, com categoria, leva pro detalhe da
+              // categoria (onde já dá pra editar inline, com contexto das
+              // outras transações dela); sem categoria ou de outro membro
+              // do grupo não tem destino de clique
+              const isOwn =
+                !("user" in transaction) || transaction.user.id === user?.id;
+              const canOpenCategory = isOwn && transaction.category;
+              const rowClassName = "flex items-center gap-3 py-3";
+              const content = (
+                <>
                   <CategoryBadge
                     icon={transaction.category?.icon ?? "Circle"}
                     color={transaction.category?.color ?? UNCATEGORIZED_COLOR}
@@ -547,12 +542,33 @@ export default function Dashboard() {
                     {transaction.type === "INCOME" ? "+" : "-"}
                     {formatCurrency(Number(transaction.amount))}
                   </p>
-                </Link>
-              </li>
-            ))}
+                </>
+              );
+
+              return (
+                <li key={transaction.id}>
+                  {canOpenCategory ? (
+                    <Link
+                      to={`/categories/${transaction.category!.id}`}
+                      className={rowClassName}
+                    >
+                      {content}
+                    </Link>
+                  ) : (
+                    <div className={rowClassName}>{content}</div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
+
+      <TransactionEditDialogs
+        edit={edit}
+        transactions={transactions}
+        categories={allCategories}
+      />
     </div>
   );
 }

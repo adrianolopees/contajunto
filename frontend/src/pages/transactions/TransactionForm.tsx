@@ -1,28 +1,15 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod";
 import toast from "react-hot-toast";
 import axios from "axios";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  createTransaction,
-  deleteTransaction,
-  getTransaction,
-  updateTransaction,
-  type Transaction,
-} from "@/services/transactions";
+import { createTransaction } from "@/services/transactions";
 import { getCategories, type Category } from "@/services/categories";
 import { getCards, type Card } from "@/services/cards";
 import CategoryPicker, {
@@ -52,14 +39,10 @@ const transactionFormSchema = z.object({
 type TransactionFormValues = z.infer<typeof transactionFormSchema>;
 
 export default function TransactionForm() {
-  const { id } = useParams();
-  const isEditMode = Boolean(id);
   const navigate = useNavigate();
 
-  const [transaction, setTransaction] = useState<Transaction | undefined>();
   const [categories, setCategories] = useState<Category[]>([]);
   const [cards, setCards] = useState<Card[]>([]);
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionFormSchema),
@@ -120,42 +103,14 @@ export default function TransactionForm() {
     }
   }, [type, categories, categoryId, form]);
 
-  // busca a transação e já popula o form quando os dados chegam
-  useEffect(() => {
-    async function fetchTransaction() {
-      if (!id) return;
-      const data = await getTransaction(id);
-      setTransaction(data);
-      form.reset({
-        type: data.type,
-        amount: data.amount,
-        paymentMethod: data.paymentMethod ?? "DEBIT",
-        description: data.description,
-        categoryId: data.categoryId ?? NO_CATEGORY,
-        cardId: data.cardId ?? NO_CARD,
-      });
-    }
-    fetchTransaction();
-  }, [id, form]);
-
   async function onSubmit(data: TransactionFormValues) {
     try {
       const payload = {
         ...data,
         amount: parseFloat(data.amount.replace(",", ".")),
-        categoryId:
-          data.categoryId === NO_CATEGORY
-            ? transaction
-              ? null
-              : undefined
-            : data.categoryId,
-        // receita não tem meio de pagamento — limpa na edição, omite na criação
-        paymentMethod:
-          data.type === "EXPENSE"
-            ? data.paymentMethod
-            : transaction
-              ? null
-              : undefined,
+        categoryId: data.categoryId === NO_CATEGORY ? undefined : data.categoryId,
+        // receita não tem meio de pagamento
+        paymentMethod: data.type === "EXPENSE" ? data.paymentMethod : undefined,
         // cartão só no crédito
         cardId:
           data.type === "EXPENSE" &&
@@ -163,17 +118,10 @@ export default function TransactionForm() {
           data.cardId &&
           data.cardId !== NO_CARD
             ? data.cardId
-            : transaction
-              ? null
-              : undefined,
+            : undefined,
       };
-      if (!transaction) {
-        await createTransaction(payload);
-        toast.success("Transação criada com sucesso!");
-      } else {
-        await updateTransaction(transaction.id, payload);
-        toast.success("Transação atualizada com sucesso!");
-      }
+      await createTransaction(payload);
+      toast.success("Transação criada com sucesso!");
       navigate("/dashboard");
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 404) {
@@ -181,17 +129,6 @@ export default function TransactionForm() {
       } else {
         toast.error("Erro ao salvar transação. Tente novamente.");
       }
-    }
-  }
-
-  async function handleDelete() {
-    try {
-      if (!transaction) return;
-      await deleteTransaction(transaction.id);
-      toast.success("Transação deletada com sucesso!");
-      navigate("/dashboard");
-    } catch {
-      toast.error("Erro ao deletar transação. Tente novamente.");
     }
   }
 
@@ -206,9 +143,7 @@ export default function TransactionForm() {
         >
           <ArrowLeft size={20} />
         </Button>
-        <h1 className="text-lg font-semibold">
-          {isEditMode ? "Editar lançamento" : "Novo lançamento"}
-        </h1>
+        <h1 className="text-lg font-semibold">Novo lançamento</h1>
       </div>
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" noValidate>
@@ -397,15 +332,6 @@ export default function TransactionForm() {
         />
 
         <div className="flex items-center justify-between gap-2 pb-8">
-          {isEditMode && (
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={() => setConfirmDeleteOpen(true)}
-            >
-              <Trash2 size={16} /> Excluir
-            </Button>
-          )}
           <Button
             type="submit"
             className={cn(
@@ -419,29 +345,6 @@ export default function TransactionForm() {
           </Button>
         </div>
       </form>
-
-      <Dialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Excluir transação?</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Essa ação não pode ser desfeita.
-          </p>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setConfirmDeleteOpen(false)}
-            >
-              Cancelar
-            </Button>
-            <Button type="button" variant="destructive" onClick={handleDelete}>
-              Excluir
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

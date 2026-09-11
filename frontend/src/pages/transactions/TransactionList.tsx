@@ -1,15 +1,20 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { getTransactions, type Transaction } from "@/services/transactions";
+import { getCategories, type Category } from "@/services/categories";
 import MonthPicker from "@/components/MonthPicker";
+import TransactionRow from "@/components/transactions/TransactionRow";
+import TransactionEditDialogs from "@/components/transactions/TransactionEditDialogs";
+import { useInlineTransactionEdit } from "@/hooks/useInlineTransactionEdit";
 import { useMonthNavigation } from "@/hooks/useMonthNavigation";
-import { formatCurrency } from "@/lib/format";
+import { useAuth } from "@/hooks/useAuth";
 import EmptyState from "@/components/EmptyState";
 
 export default function TransactionList() {
+  const { user } = useAuth();
   const { month, year, prev, next } = useMonthNavigation();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   // começa true: com false o EmptyState piscava antes do primeiro fetch
   const [isLoading, setIsLoading] = useState(true);
 
@@ -29,6 +34,13 @@ export default function TransactionList() {
     loadTransactions();
   }, [loadTransactions]);
 
+  // categorias não dependem de mês/ano — busca só uma vez, pro CategoryPicker
+  useEffect(() => {
+    getCategories().then(setCategories);
+  }, []);
+
+  const edit = useInlineTransactionEdit(loadTransactions);
+
   return (
     <div className="p-4 pb-24">
       <MonthPicker month={month} year={year} onPrev={prev} onNext={next} />
@@ -40,34 +52,21 @@ export default function TransactionList() {
       ) : (
         <ul className="mt-4 space-y-2">
           {transactions.map((transaction) => (
-            <li key={transaction.id}>
-              <Link
-                to={`/transactions/${transaction.id}/edit`}
-                className="flex w-full items-center justify-between rounded-lg border p-3 text-left"
-              >
-                <div>
-                  <p className="text-sm font-medium">
-                    {transaction.description || "Sem descrição"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {transaction.category?.name ?? "Sem categoria"}
-                  </p>
-                </div>
-                <p
-                  className={
-                    transaction.type === "INCOME"
-                      ? "font-medium text-income"
-                      : "font-medium text-expense"
-                  }
-                >
-                  {transaction.type === "INCOME" ? "+" : "-"}{" "}
-                  {formatCurrency(Number(transaction.amount))}
-                </p>
-              </Link>
-            </li>
+            <TransactionRow
+              key={transaction.id}
+              transaction={transaction}
+              currentUserId={user!.id}
+              edit={edit}
+            />
           ))}
         </ul>
       )}
+
+      <TransactionEditDialogs
+        edit={edit}
+        transactions={transactions}
+        categories={categories}
+      />
     </div>
   );
 }
