@@ -16,20 +16,14 @@ import CategoryPicker, {
   NO_CATEGORY,
 } from "@/components/transactions/CategoryPicker";
 import PaymentMethodPicker from "@/components/transactions/PaymentMethodPicker";
+import CurrencyInput from "@/components/CurrencyInput";
 
 const NO_CARD = "none";
 const AMOUNT_CHIPS = [50, 100, 250, 500];
 
 const transactionFormSchema = z.object({
   type: z.enum(["EXPENSE", "INCOME"]),
-  amount: z
-    .string()
-    .min(1, "Informe o valor")
-    .refine((v) => !isNaN(parseFloat(v.replace(",", "."))), "Valor inválido")
-    .refine(
-      (v) => parseFloat(v.replace(",", ".")) > 0,
-      "Deve ser maior que zero",
-    ),
+  amount: z.number().positive("Informe um valor válido"),
   paymentMethod: z.enum(["DEBIT", "CREDIT", "PIX", "CASH"]),
   description: z.string().max(255, "Nota muito longa"),
   categoryId: z.string().optional(),
@@ -48,7 +42,7 @@ export default function TransactionForm() {
     resolver: zodResolver(transactionFormSchema),
     defaultValues: {
       type: "EXPENSE",
-      amount: "",
+      amount: 0,
       paymentMethod: "DEBIT",
       description: "",
       categoryId: NO_CATEGORY,
@@ -107,7 +101,6 @@ export default function TransactionForm() {
     try {
       const payload = {
         ...data,
-        amount: parseFloat(data.amount.replace(",", ".")),
         categoryId: data.categoryId === NO_CATEGORY ? undefined : data.categoryId,
         // receita não tem meio de pagamento
         paymentMethod: data.type === "EXPENSE" ? data.paymentMethod : undefined,
@@ -191,16 +184,17 @@ export default function TransactionForm() {
             >
               R$
             </span>
-            <Input
-              {...form.register("amount")}
-              type="text"
-              inputMode="decimal"
-              placeholder="0,00"
+            <CurrencyInput
+              value={amount}
+              onChange={(value) =>
+                form.setValue("amount", value, { shouldValidate: true })
+              }
+              showSymbol={false}
+              autoWidth
               className={cn(
                 "border-none bg-transparent w-auto py-0 px-2 text-[42px] font-bold shadow-none focus-visible:ring-0",
                 type === "EXPENSE" ? "text-expense" : "text-income",
               )}
-              size={Math.max(amount?.length ?? 0, 4)}
             />
           </div>
           {form.formState.errors.amount?.message && (
@@ -210,20 +204,13 @@ export default function TransactionForm() {
           )}
           <div className="flex justify-center gap-2">
             {AMOUNT_CHIPS.map((value) => {
-              const isSelected =
-                parseFloat(amount?.replace(",", ".")) === value;
+              const isSelected = amount === value;
               return (
                 <button
                   key={value}
                   type="button"
                   onClick={() =>
-                    form.setValue(
-                      "amount",
-                      value.toFixed(2).replace(".", ","),
-                      {
-                        shouldValidate: true,
-                      },
-                    )
+                    form.setValue("amount", value, { shouldValidate: true })
                   }
                   className={cn(
                     "rounded-lg border px-2 py-2 mt-5 bg-muted text-xs transition-colors",

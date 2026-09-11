@@ -1,8 +1,7 @@
-import { Check, Pencil, Repeat, Trash2, X } from "lucide-react";
+import { Pencil, Repeat, Trash2 } from "lucide-react";
 import type { GroupTransaction } from "@/services/groups";
 import type { Transaction } from "@/services/transactions";
 import type { InlineTransactionEdit } from "@/hooks/useInlineTransactionEdit";
-import { Input } from "@/components/ui/input";
 import { PAYMENT_METHODS } from "@/lib/paymentMethods";
 import { formatCurrency, formatTransactionTimestamp } from "@/lib/format";
 
@@ -27,7 +26,6 @@ export default function TransactionRow({
     (m) => m.value === transaction.paymentMethod,
   );
   const PaymentIcon = paymentMeta?.icon;
-  const isEditingAmount = isOwn && edit.editingAmountId === transaction.id;
 
   const amountClassName =
     transaction.type === "INCOME"
@@ -47,34 +45,7 @@ export default function TransactionRow({
           </p>
         </div>
 
-        {isEditingAmount ? (
-          <div className="flex shrink-0 items-center gap-1">
-            <Input
-              value={edit.amountDraft}
-              onChange={(e) => edit.setAmountDraft(e.target.value)}
-              type="text"
-              inputMode="decimal"
-              autoFocus
-              className="w-20 py-1 text-right text-sm"
-            />
-            <button
-              type="button"
-              onClick={() => edit.saveAmount(transaction.id)}
-              aria-label="Salvar valor"
-              className="text-income"
-            >
-              <Check size={16} />
-            </button>
-            <button
-              type="button"
-              onClick={edit.cancelEditAmount}
-              aria-label="Cancelar"
-              className="text-muted-foreground"
-            >
-              <X size={16} />
-            </button>
-          </div>
-        ) : isOwn ? (
+        {isOwn ? (
           <button
             type="button"
             onClick={() => edit.startEditAmount(transaction.id, transaction.amount)}

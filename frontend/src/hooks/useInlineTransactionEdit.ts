@@ -13,7 +13,7 @@ import { NO_CATEGORY } from "@/components/transactions/CategoryPicker";
 // modo de edição por vez na tela inteira, como já era antes da extração
 export function useInlineTransactionEdit(onChanged: () => void) {
   const [editingAmountId, setEditingAmountId] = useState<string | null>(null);
-  const [amountDraft, setAmountDraft] = useState("");
+  const [amountDraft, setAmountDraft] = useState(0);
   const [categoryPickerFor, setCategoryPickerFor] = useState<string | null>(
     null,
   );
@@ -26,21 +26,22 @@ export function useInlineTransactionEdit(onChanged: () => void) {
 
   function startEditAmount(transactionId: string, currentAmount: string) {
     setEditingAmountId(transactionId);
-    setAmountDraft(currentAmount);
+    setAmountDraft(Number(currentAmount));
   }
 
   function cancelEditAmount() {
     setEditingAmountId(null);
   }
 
+  // amountDraft vem do CurrencyInput, que já garante um número válido —
+  // só falta checar que não ficou zerado (campo "vazio")
   async function saveAmount(transactionId: string) {
-    const parsed = parseFloat(amountDraft.replace(",", "."));
-    if (isNaN(parsed) || parsed <= 0) {
+    if (amountDraft <= 0) {
       toast.error("Valor inválido.");
       return;
     }
     try {
-      await updateTransaction(transactionId, { amount: parsed });
+      await updateTransaction(transactionId, { amount: amountDraft });
       toast.success("Valor atualizado!");
       setEditingAmountId(null);
       onChanged();

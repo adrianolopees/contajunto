@@ -20,6 +20,7 @@ import CategoryPicker, {
   NO_CATEGORY,
 } from "@/components/transactions/CategoryPicker";
 import PaymentMethodPicker from "@/components/transactions/PaymentMethodPicker";
+import CurrencyInput from "@/components/CurrencyInput";
 
 interface TransactionEditDialogsProps {
   edit: InlineTransactionEdit;
@@ -44,6 +45,43 @@ export default function TransactionEditDialogs({
 
   return (
     <>
+      {/* mesmo padrão dos outros dialogs curtos (pagamento/exclusão) — antes
+          essa edição era inline na própria linha, mas ficou apertada e
+          inconsistente com os outros campos, que já abrem overlay */}
+      <Dialog
+        open={edit.editingAmountId !== null}
+        onOpenChange={(open) => !open && edit.cancelEditAmount()}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar valor</DialogTitle>
+          </DialogHeader>
+          <CurrencyInput
+            value={edit.amountDraft}
+            onChange={edit.setAmountDraft}
+            autoFocus
+            className="text-center text-2xl font-bold"
+          />
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={edit.cancelEditAmount}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={() =>
+                edit.editingAmountId && edit.saveAmount(edit.editingAmountId)
+              }
+            >
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Sheet (menu inferior) em vez de Dialog: a lista de categorias pode
           ficar grande (vários grupos), e um Dialog centralizado não dá
           espaço suficiente de tela pra ela rolar — o Sheet ocupa a maior
