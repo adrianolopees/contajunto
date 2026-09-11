@@ -15,6 +15,9 @@ interface ExpandableCategoryGroupsProps<T> {
   totalForPercentage: number;
   getItemKey: (item: T) => string;
   renderItem: (item: T) => ReactNode;
+  // conteúdo extra sob o cabeçalho do grupo, sempre visível (não depende de
+  // expandir) — usado pelo Dashboard pra mostrar o teto de gasto do grupo
+  renderGroupExtra?: (group: CategoryGroup, total: number) => ReactNode;
 }
 
 export default function ExpandableCategoryGroups<T>({
@@ -22,6 +25,7 @@ export default function ExpandableCategoryGroups<T>({
   totalForPercentage,
   getItemKey,
   renderItem,
+  renderGroupExtra,
 }: ExpandableCategoryGroupsProps<T>) {
   const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
 
@@ -71,6 +75,9 @@ export default function ExpandableCategoryGroups<T>({
                 />
               )}
             </button>
+            {renderGroupExtra && (
+              <div className="px-3 pb-3">{renderGroupExtra(group, total)}</div>
+            )}
             {isExpanded && (
               <ul className="divide-y border-t">
                 {items.map((item) => (

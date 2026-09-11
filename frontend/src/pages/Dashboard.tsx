@@ -26,6 +26,7 @@ import {
   type Category,
   type CategoryGroup,
 } from "@/services/categories";
+import { getCategoryGroupBudgets } from "@/services/categoryBudgets";
 import { Card, CardContent } from "@/components/ui/card";
 import BudgetBar from "@/components/BudgetBar";
 import MonthPicker from "@/components/MonthPicker";
@@ -81,6 +82,9 @@ export default function Dashboard() {
   );
   const [memberSpending, setMemberSpending] = useState<MemberSpending[]>([]);
   const [allCategories, setAllCategories] = useState<Category[]>([]);
+  const [categoryBudgets, setCategoryBudgets] = useState<
+    Record<string, number>
+  >({});
   const [expandedMemberCategoryId, setExpandedMemberCategoryId] = useState<
     string | null
   >(null);
@@ -147,37 +151,18 @@ export default function Dashboard() {
     getCategories().then(setAllCategories);
   }, []);
 
+  // teto por categoria é por usuário — mesma razão, busca só uma vez
+  useEffect(() => {
+    getCategoryGroupBudgets().then((budgets) => {
+      setCategoryBudgets(
+        Object.fromEntries(budgets.map((b) => [b.groupId, Number(b.amount)])),
+      );
+    });
+  }, []);
+
   const edit = useInlineTransactionEdit(loadData);
 
   const recentTransactions = transactions.slice(0, 5);
-
-  const now = new Date();
-  const isCurrentMonth =
-    month === now.getMonth() + 1 && year === now.getFullYear();
-
-  // aviso de ritmo: extrapola o gasto do mês pelo ritmo diário atual.
-  // só a partir do dia 10 — antes disso o multiplicador (dias/dia) distorce demais.
-  const monthlyBudget = user?.monthlyBudget ? Number(user.monthlyBudget) : null;
-  const monthExpense = summary?.expense ?? 0;
-  let paceOverBudget: number | null = null;
-  if (
-    view === "personal" &&
-    isCurrentMonth &&
-    monthlyBudget !== null &&
-    monthExpense > 0 &&
-    monthExpense <= monthlyBudget &&
-    now.getDate() >= 10
-  ) {
-    const daysInMonth = new Date(
-      now.getFullYear(),
-      now.getMonth() + 1,
-      0,
-    ).getDate();
-    const projected = (monthExpense / now.getDate()) * daysInMonth;
-    if (projected > monthlyBudget) {
-      paceOverBudget = Math.round((projected - monthlyBudget) / 50) * 50;
-    }
-  }
 
   return (
     <div className="space-y-4 px-4 py-4 pb-24">
@@ -244,18 +229,6 @@ export default function Dashboard() {
           </div>
         </CardContent>
       </Card>
-
-      {view === "personal" && (
-        <div className="-mt-2 space-y-1 px-1">
-          <BudgetBar spent={summary?.expense ?? 0} budget={monthlyBudget} />
-          {paceOverBudget !== null && (
-            <p className="text-xs text-amber-600 dark:text-amber-500">
-              No ritmo atual, você fecha o mês ~{formatCurrency(paceOverBudget)}{" "}
-              acima do teto.
-            </p>
-          )}
-        </div>
-      )}
 
       {view === "family" && group && (
         <div className="grid grid-cols-2 gap-2">
@@ -335,6 +308,16 @@ export default function Dashboard() {
                 0,
               )}
               getItemKey={(item) => item.id}
+              renderGroupExtra={
+                view === "personal"
+                  ? (group, total) => {
+                      const budget = categoryBudgets[group.id];
+                      // sem teto configurado pro grupo — não mostra barra
+                      if (!budget) return null;
+                      return <BudgetBar spent={total} budget={budget} />;
+                    }
+                  : undefined
+              }
               renderItem={(item: CategorySpendingLeaf) => {
                 if (item.id === "uncategorized") {
                   const isExpanded = expandedMemberCategoryId === item.id;

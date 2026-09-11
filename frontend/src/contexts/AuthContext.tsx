@@ -6,7 +6,6 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  monthlyBudget: string | null;
   familyGroupId: string | null;
 }
 

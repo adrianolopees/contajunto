@@ -15,20 +15,10 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { updateMe } from "@/services/users";
 import CardManager from "@/components/CardManager";
+import CategoryBudgetManager from "@/components/CategoryBudgetManager";
 
 const profileSchema = z.object({
   name: z.string().min(2, "Nome deve ter no mínimo 2 caracteres").max(100),
-  monthlyBudget: z
-    .string()
-    .optional()
-    .refine(
-      (v) => !v || !isNaN(parseFloat(v.replace(",", "."))),
-      "Valor inválido",
-    )
-    .refine(
-      (v) => !v || parseFloat(v.replace(",", ".")) > 0,
-      "Deve ser maior que zero",
-    ),
 });
 
 export function Profile() {
@@ -41,20 +31,13 @@ export function Profile() {
     resolver: zodResolver(profileSchema),
     defaultValues: {
       name: user?.name ?? "",
-      monthlyBudget: (user?.monthlyBudget ?? "").replace(".", ","),
     },
   });
 
   async function onSubmit(data: z.infer<typeof profileSchema>) {
     try {
-      const monthlyBudget = data.monthlyBudget
-        ? parseFloat(data.monthlyBudget.replace(",", "."))
-        : null;
-      const updated = await updateMe({ name: data.name, monthlyBudget });
-      updateUser({
-        name: updated.name,
-        monthlyBudget: updated.monthlyBudget,
-      });
+      const updated = await updateMe({ name: data.name });
+      updateUser({ name: updated.name });
       toast.success("Perfil atualizado com sucesso!");
     } catch {
       toast.error("Erro ao atualizar perfil. Tente novamente.");
@@ -90,24 +73,6 @@ export function Profile() {
               />
             </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="monthlyBudget">
-                Teto de gastos do mês (opcional)
-              </Label>
-              <Input
-                {...register("monthlyBudget")}
-                id="monthlyBudget"
-                type="text"
-                inputMode="decimal"
-                placeholder="0,00"
-              />
-              {errors.monthlyBudget && (
-                <p className="text-sm text-destructive">
-                  {errors.monthlyBudget.message}
-                </p>
-              )}
-            </div>
-
             <Button type="submit" className="w-full cursor-pointer">
               Salvar
             </Button>
@@ -124,6 +89,18 @@ export function Profile() {
         </CardHeader>
         <CardContent>
           <CardManager />
+        </CardContent>
+      </Card>
+
+      <Card className="mx-auto w-full max-w-sm">
+        <CardHeader>
+          <CardTitle>Teto por categoria</CardTitle>
+          <CardDescription>
+            Defina um limite mensal opcional pra cada categoria de despesa
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <CategoryBudgetManager />
         </CardContent>
       </Card>
     </div>
