@@ -10,6 +10,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import CategoryPicker, {
   NO_CATEGORY,
 } from "@/components/transactions/CategoryPicker";
@@ -38,26 +44,32 @@ export default function TransactionEditDialogs({
 
   return (
     <>
-      <Dialog
+      {/* Sheet (menu inferior) em vez de Dialog: a lista de categorias pode
+          ficar grande (vários grupos), e um Dialog centralizado não dá
+          espaço suficiente de tela pra ela rolar — o Sheet ocupa a maior
+          parte da altura da viewport (ver max-h-[85dvh] no sheet.tsx) */}
+      <Sheet
         open={edit.categoryPickerFor !== null}
         onOpenChange={(open) => !open && edit.setCategoryPickerFor(null)}
       >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Trocar categoria</DialogTitle>
-          </DialogHeader>
+        <SheetContent side="bottom">
+          <SheetHeader>
+            <SheetTitle>Trocar categoria</SheetTitle>
+          </SheetHeader>
           {categoryPickerTransaction && (
-            <CategoryPicker
-              categories={categories}
-              type={categoryPickerTransaction.type}
-              value={categoryPickerTransaction.categoryId ?? NO_CATEGORY}
-              onSelect={(newCategoryId) =>
-                edit.changeCategory(categoryPickerTransaction.id, newCategoryId)
-              }
-            />
+            <div className="px-4 pb-4">
+              <CategoryPicker
+                categories={categories}
+                type={categoryPickerTransaction.type}
+                value={categoryPickerTransaction.categoryId ?? NO_CATEGORY}
+                onSelect={(newCategoryId) =>
+                  edit.changeCategory(categoryPickerTransaction.id, newCategoryId)
+                }
+              />
+            </div>
           )}
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
 
       <Dialog
         open={edit.paymentPickerFor !== null}
