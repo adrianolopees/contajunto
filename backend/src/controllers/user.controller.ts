@@ -9,12 +9,6 @@ const updateSchema = z.object({
     .min(2, { error: "O nome deve ter no mínimo 2 caracteres" })
     .max(100, { error: "O nome não pode exceder 100 caracteres" })
     .optional(),
-  monthlyBudget: z
-    .number()
-    .positive({ error: "O teto deve ser maior que zero" })
-    .multipleOf(0.01)
-    .nullable()
-    .optional(),
 });
 
 export async function getMe(req: Request, res: Response) {
@@ -24,7 +18,6 @@ export async function getMe(req: Request, res: Response) {
       id: true,
       name: true,
       email: true,
-      monthlyBudget: true,
       createdAt: true,
       familyGroupId: true,
     },
@@ -38,11 +31,11 @@ export async function getMe(req: Request, res: Response) {
 }
 
 export async function updateMe(req: Request, res: Response) {
-  const { name, monthlyBudget } = updateSchema.parse(req.body);
+  const { name } = updateSchema.parse(req.body);
 
   const userUpdated = await prisma.user.update({
     where: { id: req.user.id },
-    data: { name, monthlyBudget },
+    data: { name },
     omit: { passwordHash: true, categoriesVersion: true },
   });
 

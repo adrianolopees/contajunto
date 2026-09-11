@@ -8,19 +8,19 @@ datasource db {
 }
 
 model User {
-  id                String         @id @default(uuid())
+  id                String                @id @default(uuid())
   name              String
-  email             String         @unique
+  email             String                @unique
   passwordHash      String
-  monthlyBudget     Decimal?       @db.Decimal(10, 2)
-  categoriesVersion Int            @default(1)
-  createdAt         DateTime       @default(now())
+  categoriesVersion Int                   @default(1)
+  createdAt         DateTime              @default(now())
   familyGroupId     String?
-  familyGroup       FamilyGroup?   @relation(fields: [familyGroupId], references: [id])
+  familyGroup       FamilyGroup?          @relation(fields: [familyGroupId], references: [id])
   categories        Category[]
   transactions      Transaction[]
   refreshTokens     RefreshToken[]
   cards             Card[]
+  categoryBudgets   CategoryGroupBudget[]
 
   @@index([familyGroupId])
 }
@@ -98,13 +98,30 @@ model Category {
 }
 
 model CategoryGroup {
-  id                String            @id @default(uuid())
+  id                String                @id @default(uuid())
   type              TransactionType
-  name              String            @unique
+  name              String                @unique
   color             String
   icon              String
   defaultCategories DefaultCategory[]
   categories        Category[]
+  budgets           CategoryGroupBudget[]
+}
+
+// teto de gasto mensal por categoria-pai, por usuário — substitui o antigo
+// User.monthlyBudget (teto único). CategoryGroup é global (compartilhado
+// entre usuários), então o teto não pode morar nela direto; opcional por
+// natureza (sem linha aqui = sem teto configurado pro grupo)
+model CategoryGroupBudget {
+  id        String        @id @default(uuid())
+  amount    Decimal       @db.Decimal(10, 2)
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  groupId   String
+  group     CategoryGroup @relation(fields: [groupId], references: [id])
+  createdAt DateTime      @default(now())
+
+  @@unique([userId, groupId])
 }
 
 model DefaultCategory {

@@ -10,6 +10,7 @@ import groupRoutes from "./routes/group.routes.js";
 import transactionRoutes from "./routes/transaction.routes.js";
 import healthRoutes from "./routes/health.routes.js";
 import categorieRoutes from "./routes/category.routes.js";
+import categoryGroupBudgetRoutes from "./routes/categoryGroupBudget.routes.js";
 import cardRoutes from "./routes/card.routes.js";
 import errorMiddleware from "./middlewares/error.middleware.js";
 
@@ -37,6 +38,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/groups", groupRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/categories", categorieRoutes);
+app.use("/api/category-budgets", categoryGroupBudgetRoutes);
 app.use("/api/cards", cardRoutes);
 
 // Em produção o mesmo serviço serve a SPA e a API (origem única -> cookie
