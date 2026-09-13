@@ -68,6 +68,12 @@ export function compareYMD(a: YMD, b: YMD): number {
   return a.day - b.day;
 }
 
+// chave estável pra identificar a fatura de um fechamento (independe de
+// closingDay/dueDay, que podem mudar depois que a fatura já fechou)
+export function invoiceKey(year: number, month: number): string {
+  return `${year}-${month}`;
+}
+
 export function ymdToISO(d: YMD): string {
   const mm = String(d.month).padStart(2, "0");
   const dd = String(d.day).padStart(2, "0");
@@ -81,21 +87,28 @@ export interface InvoiceInput {
 
 export interface InvoiceShape {
   closeDate: string;
+  closeYear: number;
+  closeMonth: number;
   dueDate: string;
   total: number;
   count: number;
   closed: boolean;
+  paid: boolean;
 }
 
 // Agrupa as compras de crédito de um cartão por fatura e devolve a fatura
 // "atual" (última já fechada, ou a primeira se nenhuma fechou) e a "próxima"
 // (primeira ainda aberta). Sem histórico — faturas antigas ficam de fora até
-// a Slice 3 rastrear pagamento.
+// existir mais de um closeYear/closeMonth fechado pendente. `paidKeys`
+// (formato `invoiceKey`) marca faturas já liquidadas — elas continuam
+// aparecendo como `current` (a UI mostra o selo "paga"), só saem do cálculo
+// de total devido do chamador.
 export function buildCardInvoices(
   txs: InvoiceInput[],
   closingDay: number,
   dueDay: number,
   today: YMD,
+  paidKeys: Set<string> = new Set(),
 ): { current: InvoiceShape | null; upcoming: InvoiceShape | null } {
   if (txs.length === 0) return { current: null, upcoming: null };
 
@@ -126,10 +139,13 @@ export function buildCardInvoices(
     const closeDate = invoiceCloseDate(b.year, b.month, closingDay);
     return {
       closeDate: ymdToISO(closeDate),
+      closeYear: b.year,
+      closeMonth: b.month,
       dueDate: ymdToISO(invoiceDueDate(b.year, b.month, closingDay, dueDay)),
       total: b.totalCents / 100,
       count: b.count,
       closed: compareYMD(closeDate, today) < 0,
+      paid: paidKeys.has(invoiceKey(b.year, b.month)),
     };
   };
 

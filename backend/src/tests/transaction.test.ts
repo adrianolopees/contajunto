@@ -2,8 +2,10 @@ import request from "supertest";
 import app from "../app.js";
 import prisma from "../lib/prisma.js";
 import { createAndAuthenticateUser } from "./helpers.js";
+import { getBusinessMonthYear } from "../lib/date.js";
 
 beforeEach(async () => {
+  await prisma.invoicePayment.deleteMany();
   await prisma.transaction.deleteMany();
   await prisma.card.deleteMany();
   await prisma.category.deleteMany();
@@ -12,6 +14,7 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
+  await prisma.invoicePayment.deleteMany();
   await prisma.transaction.deleteMany();
   await prisma.card.deleteMany();
   await prisma.category.deleteMany();
@@ -738,6 +741,90 @@ describe("GET /transactions/summary", () => {
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ income: 0, expense: 0, balance: 0 });
+  });
+});
+
+describe("GET /transactions/summary — regime de caixa", () => {
+  it("should not count a credit expense until its invoice is paid", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    await request(app)
+      .post("/api/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({
+        amount: 300,
+        type: "EXPENSE",
+        description: "Compra crédito",
+        paymentMethod: "CREDIT",
+      });
+
+    const res = await request(app)
+      .get("/api/transactions/summary")
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ income: 0, expense: 0, balance: 0 });
+  });
+
+  it("should count debit/pix/cash expenses immediately", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    await request(app)
+      .post("/api/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ amount: 50, type: "EXPENSE", description: "Mercado", paymentMethod: "PIX" });
+
+    const res = await request(app)
+      .get("/api/transactions/summary")
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(res.body).toMatchObject({ income: 0, expense: 50, balance: -50 });
+  });
+
+  it("should count an expense with no paymentMethod (legacy/unset) immediately", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    await request(app)
+      .post("/api/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ amount: 40, type: "EXPENSE", description: "Sem método" });
+
+    const res = await request(app)
+      .get("/api/transactions/summary")
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(res.body).toMatchObject({ income: 0, expense: 40, balance: -40 });
+  });
+
+  it("should count paying a card invoice as an outflow", async () => {
+    const accessToken = await createAndAuthenticateUser();
+    const me = await request(app)
+      .get("/api/users/me")
+      .set("Authorization", `Bearer ${accessToken}`);
+    const card = await request(app)
+      .post("/api/cards")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ name: "Nubank", closingDay: 3, dueDay: 10, color: "#8b5cf6" });
+
+    const { month, year } = getBusinessMonthYear();
+    await prisma.invoicePayment.create({
+      data: {
+        cardId: card.body.card.id,
+        userId: me.body.user.id,
+        amount: 120,
+        closeYear: year,
+        closeMonth: month,
+        paidOn: new Date(),
+        month,
+        year,
+      },
+    });
+
+    const res = await request(app)
+      .get("/api/transactions/summary")
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(res.body).toMatchObject({ income: 0, expense: 120, balance: -120 });
   });
 });
 

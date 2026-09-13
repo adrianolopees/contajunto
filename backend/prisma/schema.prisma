@@ -21,6 +21,7 @@ model User {
   refreshTokens     RefreshToken[]
   cards             Card[]
   categoryBudgets   CategoryGroupBudget[]
+  invoicePayments   InvoicePayment[]
 
   @@index([familyGroupId])
 }
@@ -69,17 +70,41 @@ model Transaction {
 }
 
 model Card {
-  id           String        @id @default(uuid())
-  name         String
-  closingDay   Int
-  dueDay       Int
-  color        String
-  createdAt    DateTime      @default(now())
-  userId       String
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  transactions Transaction[]
+  id              String           @id @default(uuid())
+  name            String
+  closingDay      Int
+  dueDay          Int
+  color           String
+  createdAt       DateTime         @default(now())
+  userId          String
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions    Transaction[]
+  invoicePayments InvoicePayment[]
 
   @@index([userId])
+}
+
+// evento de liquidação de uma fatura — não é uma Transaction porque não é
+// gasto novo, é o pagamento de gastos já registrados; closeYear/closeMonth
+// identificam a fatura (derivada, não armazenada em lugar nenhum) que foi
+// paga. month/year replicam a convenção de Transaction (derivados de paidOn
+// na escrita) pro regime de caixa do resumo filtrar sem range query de tz
+model InvoicePayment {
+  id         String   @id @default(uuid())
+  amount     Decimal  @db.Decimal(10, 2)
+  closeYear  Int
+  closeMonth Int
+  paidOn     DateTime
+  month      Int
+  year       Int
+  createdAt  DateTime @default(now())
+  cardId     String
+  card       Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([cardId, closeYear, closeMonth])
+  @@index([userId, month, year])
 }
 
 model Category {

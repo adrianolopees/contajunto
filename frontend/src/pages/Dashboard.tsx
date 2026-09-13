@@ -27,6 +27,7 @@ import {
   type CategoryGroup,
 } from "@/services/categories";
 import { getCategoryGroupBudgets } from "@/services/categoryBudgets";
+import { getBills, type Bill } from "@/services/cards";
 import { Card, CardContent } from "@/components/ui/card";
 import BudgetBar from "@/components/BudgetBar";
 import MonthPicker from "@/components/MonthPicker";
@@ -89,6 +90,8 @@ export default function Dashboard() {
     string | null
   >(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [pendingBills, setPendingBills] = useState<Bill[]>([]);
+  const [billsTotalDue, setBillsTotalDue] = useState(0);
 
   useEffect(() => {
     if (!user?.familyGroupId) return;
@@ -160,6 +163,20 @@ export default function Dashboard() {
     });
   }, []);
 
+  // fatura é "agora", não do mês navegado no MonthPicker, e é sempre pessoal
+  // (não existe visão de fatura por grupo) — busca só uma vez, sem toast se
+  // falhar: é um aviso a mais, não o dado principal da tela
+  useEffect(() => {
+    getBills()
+      .then((data) => {
+        setPendingBills(
+          data.bills.filter((b) => b.current.closed && !b.current.paid),
+        );
+        setBillsTotalDue(data.totalDue);
+      })
+      .catch(() => {});
+  }, []);
+
   const edit = useInlineTransactionEdit(loadData);
 
   const recentTransactions = transactions.slice(0, 5);
@@ -229,6 +246,25 @@ export default function Dashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {view === "personal" && pendingBills.length > 0 && (
+        <Link
+          to="/bills"
+          className="flex items-center justify-between gap-3 rounded-xl border bg-card p-3"
+        >
+          <div className="min-w-0">
+            <p className="text-sm font-medium">
+              {pendingBills.length === 1
+                ? "1 fatura fechada"
+                : `${pendingBills.length} faturas fechadas`}
+            </p>
+            <p className="text-xs text-muted-foreground">Toque para pagar</p>
+          </div>
+          <p className="shrink-0 font-semibold text-expense">
+            {formatCurrency(billsTotalDue)}
+          </p>
+        </Link>
+      )}
 
       {view === "family" && group && (
         <div className="grid grid-cols-2 gap-2">

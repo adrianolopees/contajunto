@@ -5,6 +5,7 @@ import { createAndAuthenticateUser } from "./helpers.js";
 import { getBusinessMonthYear } from "../lib/date.js";
 
 beforeEach(async () => {
+  await prisma.invoicePayment.deleteMany();
   await prisma.transaction.deleteMany();
   await prisma.card.deleteMany();
   await prisma.category.deleteMany();
@@ -13,6 +14,7 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
+  await prisma.invoicePayment.deleteMany();
   await prisma.transaction.deleteMany();
   await prisma.card.deleteMany();
   await prisma.category.deleteMany();
@@ -314,5 +316,136 @@ describe("GET /cards/bills", () => {
     expect(res.status).toBe(200);
     expect(res.body.bills[0].current.closed).toBe(true);
     expect(res.body.totalDue).toBe(200);
+  });
+});
+
+async function createCardWithClosedInvoice(token: string) {
+  const card = await request(app)
+    .post("/api/cards")
+    .set("Authorization", `Bearer ${token}`)
+    .send(validCard);
+  const cardId = card.body.card.id;
+
+  const me = await request(app)
+    .get("/api/users/me")
+    .set("Authorization", `Bearer ${token}`);
+
+  const { month, year } = getBusinessMonthYear();
+  const twoMonthsAgo = new Date(year, month - 3, 15);
+
+  await prisma.transaction.create({
+    data: {
+      userId: me.body.user.id,
+      amount: 200,
+      type: "EXPENSE",
+      description: "Compra antiga",
+      paymentMethod: "CREDIT",
+      cardId,
+      date: twoMonthsAgo,
+      month: twoMonthsAgo.getMonth() + 1,
+      year: twoMonthsAgo.getFullYear(),
+    },
+  });
+
+  return cardId;
+}
+
+describe("POST /cards/bills/pay", () => {
+  it("should return 401 when no token is provided", async () => {
+    const res = await request(app)
+      .post("/api/cards/bills/pay")
+      .send({ cardId: "00000000-0000-0000-0000-000000000000" });
+
+    expect(res.status).toBe(401);
+  });
+
+  it("should return 400 when cardId is not a valid uuid", async () => {
+    const token = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .post("/api/cards/bills/pay")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ cardId: "abc" });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("should return 404 when the card belongs to another user", async () => {
+    const token1 = await createAndAuthenticateUser();
+    const token2 = await createAndAuthenticateUser(otherUser);
+    const cardId = await createCardWithClosedInvoice(token1);
+
+    const res = await request(app)
+      .post("/api/cards/bills/pay")
+      .set("Authorization", `Bearer ${token2}`)
+      .send({ cardId });
+
+    expect(res.status).toBe(404);
+  });
+
+  it("should return 400 when there is no closed invoice yet", async () => {
+    const token = await createAndAuthenticateUser();
+    const card = await request(app)
+      .post("/api/cards")
+      .set("Authorization", `Bearer ${token}`)
+      .send(validCard);
+
+    const res = await request(app)
+      .post("/api/cards/bills/pay")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ cardId: card.body.card.id });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("should pay the closed invoice and reflect it as paid on GET /cards/bills", async () => {
+    const token = await createAndAuthenticateUser();
+    const cardId = await createCardWithClosedInvoice(token);
+
+    const payRes = await request(app)
+      .post("/api/cards/bills/pay")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ cardId });
+
+    expect(payRes.status).toBe(201);
+    expect(Number(payRes.body.payment.amount)).toBe(200);
+    expect(payRes.body.payment.cardId).toBe(cardId);
+
+    const billsRes = await request(app)
+      .get("/api/cards/bills")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(billsRes.body.bills[0].current.paid).toBe(true);
+    expect(billsRes.body.totalDue).toBe(0);
+  });
+
+  it("should accept an explicit paidOn date", async () => {
+    const token = await createAndAuthenticateUser();
+    const cardId = await createCardWithClosedInvoice(token);
+
+    const res = await request(app)
+      .post("/api/cards/bills/pay")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ cardId, paidOn: "2026-01-15" });
+
+    expect(res.status).toBe(201);
+    expect(res.body.payment.paidOn.slice(0, 10)).toBe("2026-01-15");
+  });
+
+  it("should return 409 when the invoice is already paid", async () => {
+    const token = await createAndAuthenticateUser();
+    const cardId = await createCardWithClosedInvoice(token);
+
+    await request(app)
+      .post("/api/cards/bills/pay")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ cardId });
+
+    const res = await request(app)
+      .post("/api/cards/bills/pay")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ cardId });
+
+    expect(res.status).toBe(409);
   });
 });

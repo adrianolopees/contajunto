@@ -300,6 +300,8 @@ export async function getGroupMemberSpending(req: Request, res: Response) {
   res.status(200).json({ memberSpending });
 }
 
+// mesmo regime de caixa de getTransactionsSummary, agregado pros membros
+// do grupo — sem isso o saldo pessoal e o saldo da família descasariam
 export async function getGroupTransactionsSummary(req: Request, res: Response) {
   const { month: rawMonth, year: rawYear } = querySchema.parse(req.query);
 
@@ -314,31 +316,41 @@ export async function getGroupTransactionsSummary(req: Request, res: Response) {
     return;
   }
 
-  const [expenseSummary, incomeSummary] = await Promise.all([
-    prisma.transaction.aggregate({
-      where: {
-        userId: { in: memberIds },
-        month,
-        year,
-        type: "EXPENSE",
-      },
-      _sum: { amount: true },
-    }),
+  const [expenseSummary, incomeSummary, invoicePaymentSummary] =
+    await Promise.all([
+      prisma.transaction.aggregate({
+        where: {
+          userId: { in: memberIds },
+          month,
+          year,
+          type: "EXPENSE",
+          OR: [
+            { paymentMethod: null },
+            { paymentMethod: { in: ["DEBIT", "PIX", "CASH"] } },
+          ],
+        },
+        _sum: { amount: true },
+      }),
 
-    prisma.transaction.aggregate({
-      where: {
-        userId: { in: memberIds },
-        month,
-        year,
-        type: "INCOME",
-      },
-      _sum: { amount: true },
-    }),
-  ]);
+      prisma.transaction.aggregate({
+        where: {
+          userId: { in: memberIds },
+          month,
+          year,
+          type: "INCOME",
+        },
+        _sum: { amount: true },
+      }),
+
+      prisma.invoicePayment.aggregate({
+        where: { userId: { in: memberIds }, month, year },
+        _sum: { amount: true },
+      }),
+    ]);
   const incomeCents = Math.round(Number(incomeSummary._sum.amount ?? 0) * 100);
-  const expenseCents = Math.round(
-    Number(expenseSummary._sum.amount ?? 0) * 100,
-  );
+  const expenseCents =
+    Math.round(Number(expenseSummary._sum.amount ?? 0) * 100) +
+    Math.round(Number(invoicePaymentSummary._sum.amount ?? 0) * 100);
 
   res.status(200).json({
     income: incomeCents / 100,

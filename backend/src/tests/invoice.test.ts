@@ -2,6 +2,7 @@ import {
   clampDay,
   invoiceCloseMonth,
   invoiceDueDate,
+  invoiceKey,
   buildCardInvoices,
 } from "../lib/invoice.js";
 
@@ -118,5 +119,41 @@ describe("buildCardInvoices", () => {
       total: 50,
       closed: false,
     });
+  });
+
+  it("marks the current invoice as paid when its key is in paidKeys", () => {
+    const { current } = buildCardInvoices(
+      [{ amountCents: 15000, purchase: { year: 2026, month: 7, day: 10 } }],
+      3,
+      10,
+      { year: 2026, month: 9, day: 15 },
+      new Set([invoiceKey(2026, 8)]),
+    );
+    expect(current).toMatchObject({ closeYear: 2026, closeMonth: 8, paid: true });
+  });
+
+  it("leaves the upcoming invoice unaffected by paidKeys of the current one", () => {
+    const result = buildCardInvoices(
+      [
+        { amountCents: 20000, purchase: { year: 2026, month: 7, day: 15 } },
+        { amountCents: 5000, purchase: { year: 2026, month: 8, day: 15 } },
+      ],
+      3,
+      10,
+      { year: 2026, month: 8, day: 20 },
+      new Set([invoiceKey(2026, 8)]),
+    );
+    expect(result.current).toMatchObject({ paid: true });
+    expect(result.upcoming).toMatchObject({ paid: false });
+  });
+
+  it("defaults to unpaid when paidKeys is omitted", () => {
+    const { current } = buildCardInvoices(
+      [{ amountCents: 15000, purchase: { year: 2026, month: 7, day: 10 } }],
+      3,
+      10,
+      { year: 2026, month: 9, day: 15 },
+    );
+    expect(current).toMatchObject({ paid: false });
   });
 });

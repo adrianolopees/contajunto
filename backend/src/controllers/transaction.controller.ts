@@ -218,6 +218,9 @@ export async function deleteTransaction(req: Request, res: Response) {
   res.status(200).json({ message: "Transaction deleted successfully" });
 }
 
+// regime de caixa: crédito só sai do saldo quando a fatura é paga
+// (InvoicePayment), não no momento da compra — por isso "saída" exclui
+// EXPENSE de paymentMethod CREDIT e soma os pagamentos de fatura do mês
 export async function getTransactionsSummary(req: Request, res: Response) {
   const { month: rawMonth, year: rawYear } = querySchema.parse(req.query);
   const userId = req.user.id;
@@ -226,30 +229,43 @@ export async function getTransactionsSummary(req: Request, res: Response) {
   const month = rawMonth || currentMonth;
   const year = rawYear || currentYear;
 
-  const [expenseSummary, incomeSummary] = await Promise.all([
-    prisma.transaction.aggregate({
-      where: {
-        userId,
-        month,
-        year,
-        type: "EXPENSE",
-      },
-      _sum: { amount: true },
-    }),
-    prisma.transaction.aggregate({
-      where: {
-        userId,
-        month,
-        year,
-        type: "INCOME",
-      },
-      _sum: { amount: true },
-    }),
-  ]);
+  const [expenseSummary, incomeSummary, invoicePaymentSummary] =
+    await Promise.all([
+      prisma.transaction.aggregate({
+        where: {
+          userId,
+          month,
+          year,
+          type: "EXPENSE",
+          // exclui só CREDIT explicitamente — paymentMethod null (transação
+          // antiga, sem método definido) continua contando como saída;
+          // `not: "CREDIT"` sozinho seria ambíguo pra null dependendo do
+          // engine, então listamos os valores não-crédito de propósito
+          OR: [
+            { paymentMethod: null },
+            { paymentMethod: { in: ["DEBIT", "PIX", "CASH"] } },
+          ],
+        },
+        _sum: { amount: true },
+      }),
+      prisma.transaction.aggregate({
+        where: {
+          userId,
+          month,
+          year,
+          type: "INCOME",
+        },
+        _sum: { amount: true },
+      }),
+      prisma.invoicePayment.aggregate({
+        where: { userId, month, year },
+        _sum: { amount: true },
+      }),
+    ]);
   const incomeCents = Math.round(Number(incomeSummary._sum.amount ?? 0) * 100);
-  const expenseCents = Math.round(
-    Number(expenseSummary._sum.amount ?? 0) * 100,
-  );
+  const expenseCents =
+    Math.round(Number(expenseSummary._sum.amount ?? 0) * 100) +
+    Math.round(Number(invoicePaymentSummary._sum.amount ?? 0) * 100);
 
   res.status(200).json({
     income: incomeCents / 100,

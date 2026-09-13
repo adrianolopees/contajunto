@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import z from "zod";
 import prisma from "../lib/prisma.js";
-import { getBusinessYMD } from "../lib/date.js";
-import { buildCardInvoices } from "../lib/invoice.js";
+import { getBusinessYMD, getBusinessMonthYear } from "../lib/date.js";
+import { buildCardInvoices, invoiceKey } from "../lib/invoice.js";
 
 const MAX_CARDS = 5;
 
@@ -57,6 +57,17 @@ export async function getBills(req: Request, res: Response) {
     select: { amount: true, date: true, cardId: true },
   });
 
+  const payments = await prisma.invoicePayment.findMany({
+    where: { cardId: { in: cards.map((card) => card.id) } },
+    select: { cardId: true, closeYear: true, closeMonth: true },
+  });
+  const paidKeysByCard = new Map<string, Set<string>>();
+  for (const payment of payments) {
+    const keys = paidKeysByCard.get(payment.cardId) ?? new Set<string>();
+    keys.add(invoiceKey(payment.closeYear, payment.closeMonth));
+    paidKeysByCard.set(payment.cardId, keys);
+  }
+
   const today = getBusinessYMD();
   let totalDueCents = 0;
   const bills = [];
@@ -74,10 +85,13 @@ export async function getBills(req: Request, res: Response) {
       card.closingDay,
       card.dueDay,
       today,
+      paidKeysByCard.get(card.id),
     );
     if (!current) continue;
 
-    if (current.closed) totalDueCents += Math.round(current.total * 100);
+    if (current.closed && !current.paid) {
+      totalDueCents += Math.round(current.total * 100);
+    }
 
     bills.push({
       card: {
@@ -93,6 +107,75 @@ export async function getBills(req: Request, res: Response) {
   }
 
   res.status(200).json({ bills, totalDue: totalDueCents / 100 });
+}
+
+const payBillSchema = z.object({
+  cardId: z.uuid(),
+  paidOn: z.iso.date().optional(),
+});
+
+// o valor pago é sempre o total da fatura fechada atual, recalculado aqui —
+// nunca vem do body. Evita o cliente "pagar" um valor arbitrário e a fatura
+// ser dada como quitada incorretamente (pagamento parcial fora de escopo)
+export async function payBill(req: Request, res: Response) {
+  const { cardId, paidOn } = payBillSchema.parse(req.body);
+  const userId = req.user.id;
+
+  const card = await prisma.card.findFirst({ where: { id: cardId, userId } });
+  if (!card) {
+    res.status(404).json({ message: "Card not found" });
+    return;
+  }
+
+  const transactions = await prisma.transaction.findMany({
+    where: { userId, type: "EXPENSE", paymentMethod: "CREDIT", cardId },
+    select: { amount: true, date: true },
+  });
+  const payments = await prisma.invoicePayment.findMany({
+    where: { cardId },
+    select: { closeYear: true, closeMonth: true },
+  });
+  const paidKeys = new Set(
+    payments.map((p) => invoiceKey(p.closeYear, p.closeMonth)),
+  );
+
+  const { current } = buildCardInvoices(
+    transactions.map((tx) => ({
+      amountCents: Math.round(Number(tx.amount) * 100),
+      purchase: getBusinessYMD(tx.date),
+    })),
+    card.closingDay,
+    card.dueDay,
+    getBusinessYMD(),
+    paidKeys,
+  );
+
+  if (!current || !current.closed) {
+    res.status(400).json({ message: "No closed invoice to pay yet" });
+    return;
+  }
+  if (current.paid) {
+    res.status(409).json({ message: "Invoice already paid" });
+    return;
+  }
+
+  const paidOnDate = paidOn ? new Date(paidOn) : new Date();
+  const { month, year } = getBusinessMonthYear(paidOnDate);
+
+  const payment = await prisma.invoicePayment.create({
+    data: {
+      cardId,
+      userId,
+      amount: current.total,
+      closeYear: current.closeYear,
+      closeMonth: current.closeMonth,
+      paidOn: paidOnDate,
+      month,
+      year,
+    },
+  });
+
+  res.status(201).json({ payment });
 }
 
 export async function createCard(req: Request, res: Response) {

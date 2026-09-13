@@ -40,10 +40,13 @@ export async function deleteCard(id: string): Promise<void> {
 
 export interface Invoice {
   closeDate: string;
+  closeYear: number;
+  closeMonth: number;
   dueDate: string;
   total: number;
   count: number;
   closed: boolean;
+  paid: boolean;
 }
 
 export interface Bill {
@@ -64,4 +67,8 @@ export async function getBills(): Promise<{
 }> {
   const res = await api.get("/cards/bills");
   return res.data;
+}
+
+export async function payBill(cardId: string, paidOn?: string): Promise<void> {
+  await api.post("/cards/bills/pay", { cardId, paidOn });
 }
