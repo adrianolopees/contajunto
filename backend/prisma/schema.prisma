@@ -47,26 +47,33 @@ model FamilyGroup {
 }
 
 model Transaction {
-  id            String          @id @default(uuid())
-  amount        Decimal         @db.Decimal(10, 2)
-  type          TransactionType
-  paymentMethod PaymentMethod?
-  description   String
-  categoryId    String?
-  category      Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  cardId        String?
-  card          Card?           @relation(fields: [cardId], references: [id], onDelete: SetNull)
-  date          DateTime
-  month         Int
-  year          Int
-  aiRawInput    String?
-  createdAt     DateTime        @default(now())
-  userId        String
-  user          User            @relation(fields: [userId], references: [id])
+  id                 String          @id @default(uuid())
+  amount             Decimal         @db.Decimal(10, 2)
+  type               TransactionType
+  paymentMethod      PaymentMethod?
+  description        String
+  categoryId         String?
+  category           Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  cardId             String?
+  card               Card?           @relation(fields: [cardId], references: [id], onDelete: SetNull)
+  date               DateTime
+  month              Int
+  year               Int
+  // parcelamento: linhas independentes após criadas (decisão deliberada —
+  // editar uma não afeta as outras); installmentGroupId só liga o grupo pra
+  // exibir "N/total" e pra exclusão em lote ("esta e as futuras")
+  installmentGroupId String?
+  installmentNumber  Int?
+  installmentTotal   Int?
+  aiRawInput         String?
+  createdAt          DateTime        @default(now())
+  userId             String
+  user               User            @relation(fields: [userId], references: [id])
 
   @@index([userId, year, month])
   @@index([categoryId])
   @@index([cardId])
+  @@index([installmentGroupId])
 }
 
 model Card {

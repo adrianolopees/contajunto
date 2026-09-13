@@ -228,6 +228,23 @@ export async function deleteCard(req: Request, res: Response) {
     return;
   }
 
+  // apagar o cartão com parcela futura em aberto deixaria essa parcela órfã
+  // (onDelete: SetNull) e ela sumiria de qualquer fatura sem avisar ninguém —
+  // trava em vez disso, igual ao limite de 5 cartões (409)
+  const pendingInstallment = await prisma.transaction.findFirst({
+    where: {
+      cardId,
+      installmentGroupId: { not: null },
+      date: { gt: new Date() },
+    },
+  });
+  if (pendingInstallment) {
+    res.status(409).json({
+      message: "Card has pending installments and cannot be deleted",
+    });
+    return;
+  }
+
   await prisma.card.delete({ where: { id: cardId } });
 
   res.status(200).json({ message: "Card deleted successfully" });

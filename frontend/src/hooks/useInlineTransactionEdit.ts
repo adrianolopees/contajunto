@@ -81,9 +81,12 @@ export function useInlineTransactionEdit(onChanged: () => void) {
     }
   }
 
-  async function confirmDelete(transactionId: string) {
+  async function confirmDelete(
+    transactionId: string,
+    scope?: "self" | "group_forward",
+  ) {
     try {
-      await deleteTransaction(transactionId);
+      await deleteTransaction(transactionId, scope);
       toast.success("Transação excluída!");
       setDeleteConfirmFor(null);
       onChanged();

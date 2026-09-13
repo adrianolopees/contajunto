@@ -1,8 +1,10 @@
 import { Response, Request } from "express";
+import crypto from "node:crypto";
 import z from "zod";
 import prisma from "../lib/prisma.js";
-import { getBusinessMonthYear } from "../lib/date.js";
+import { getBusinessMonthYear, getBusinessYMD } from "../lib/date.js";
 import { groupSpendingByCategoryGroup } from "../lib/categorySpending.js";
+import { installmentDates, splitAmount } from "../lib/installments.js";
 
 const transactionSchema = z.object({
   amount: z.number().positive().multipleOf(0.01),
@@ -11,17 +13,28 @@ const transactionSchema = z.object({
   categoryId: z.uuid().optional(),
   paymentMethod: z.enum(["DEBIT", "CREDIT", "PIX", "CASH"]).optional(),
   cardId: z.uuid().optional(),
+  installments: z.number().int().min(1).max(12).optional(),
 });
 
-const updateTransactionSchema = transactionSchema.partial().extend({
-  categoryId: z.uuid().nullable().optional(),
-  paymentMethod: z.enum(["DEBIT", "CREDIT", "PIX", "CASH"]).nullable().optional(),
-  cardId: z.uuid().nullable().optional(),
-});
+// installments não é editável depois de criado — é propriedade da compra
+// original, não de uma parcela isolada (cada parcela já é uma Transaction
+// independente após a criação)
+const updateTransactionSchema = transactionSchema
+  .omit({ installments: true })
+  .partial()
+  .extend({
+    categoryId: z.uuid().nullable().optional(),
+    paymentMethod: z.enum(["DEBIT", "CREDIT", "PIX", "CASH"]).nullable().optional(),
+    cardId: z.uuid().nullable().optional(),
+  });
 
 const querySchema = z.object({
   month: z.coerce.number().int().min(1).max(12).optional(),
   year: z.coerce.number().int().optional(),
+});
+
+const deleteTransactionQuerySchema = z.object({
+  scope: z.enum(["self", "group_forward"]).optional(),
 });
 
 // crédito é a única forma de pagamento com fatura, então cartão só entra aí;
@@ -46,7 +59,7 @@ async function checkPaymentAndCard(
 }
 
 export async function createTransaction(req: Request, res: Response) {
-  const { amount, type, description, categoryId, paymentMethod, cardId } =
+  const { amount, type, description, categoryId, paymentMethod, cardId, installments } =
     transactionSchema.parse(req.body);
 
   const userId = req.user.id;
@@ -72,25 +85,66 @@ export async function createTransaction(req: Request, res: Response) {
     return;
   }
 
+  // parcela só existe pra compra no crédito — receita e outros métodos não
+  // têm fatura pra distribuir o valor entre meses
+  if (installments && installments > 1 && (type !== "EXPENSE" || paymentMethod !== "CREDIT")) {
+    res.status(400).json({ message: "Installments are only valid for credit expenses" });
+    return;
+  }
+
   const now = new Date();
-  const { month, year } = getBusinessMonthYear(now);
 
-  const transaction = await prisma.transaction.create({
-    data: {
-      userId,
-      amount,
-      type,
-      description: description ?? "",
-      categoryId,
-      paymentMethod,
-      cardId,
-      month,
-      year,
-      date: now,
-    },
-  });
+  if (!installments || installments <= 1) {
+    const { month, year } = getBusinessMonthYear(now);
+    const transaction = await prisma.transaction.create({
+      data: {
+        userId,
+        amount,
+        type,
+        description: description ?? "",
+        categoryId,
+        paymentMethod,
+        cardId,
+        month,
+        year,
+        date: now,
+      },
+    });
 
-  res.status(201).json({ transaction });
+    res.status(201).json({ transaction });
+    return;
+  }
+
+  const amountsCents = splitAmount(Math.round(amount * 100), installments);
+  const dates = installmentDates(getBusinessYMD(now), installments);
+  const installmentGroupId = crypto.randomUUID();
+
+  const transactions = await prisma.$transaction(
+    amountsCents.map((cents, i) => {
+      const d = dates[i];
+      const date = new Date(d.year, d.month - 1, d.day);
+      const { month, year } = getBusinessMonthYear(date);
+      return prisma.transaction.create({
+        data: {
+          userId,
+          amount: cents / 100,
+          type,
+          description: description ?? "",
+          categoryId,
+          paymentMethod,
+          cardId,
+          month,
+          year,
+          date,
+          installmentGroupId,
+          installmentNumber: i + 1,
+          installmentTotal: installments,
+        },
+      });
+    }),
+  );
+
+  res.status(201).json({ transaction: transactions[0], transactions });
 }
 
 export async function getTransactions(req: Request, res: Response) {
@@ -201,6 +255,7 @@ export async function updateTransaction(req: Request, res: Response) {
 
 export async function deleteTransaction(req: Request, res: Response) {
   const transactionId = z.uuid().parse(req.params.id);
+  const { scope } = deleteTransactionQuerySchema.parse(req.query);
 
   const transaction = await prisma.transaction.findFirst({
     where: { id: transactionId, userId: req.user.id },
@@ -211,9 +266,22 @@ export async function deleteTransaction(req: Request, res: Response) {
     return;
   }
 
-  await prisma.transaction.delete({
-    where: { id: transactionId },
-  });
+  // "esta e as futuras": apaga a parcela clicada + todas com número maior
+  // no mesmo grupo, nunca as passadas. Fora de um grupo de parcelas, scope
+  // não tem o que fazer — cai no comportamento de sempre (só esta linha)
+  if (scope === "group_forward" && transaction.installmentGroupId) {
+    await prisma.transaction.deleteMany({
+      where: {
+        userId: req.user.id,
+        installmentGroupId: transaction.installmentGroupId,
+        installmentNumber: { gte: transaction.installmentNumber ?? 0 },
+      },
+    });
+  } else {
+    await prisma.transaction.delete({
+      where: { id: transactionId },
+    });
+  }
 
   res.status(200).json({ message: "Transaction deleted successfully" });
 }

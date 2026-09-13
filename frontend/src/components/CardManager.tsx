@@ -129,8 +129,12 @@ export default function CardManager() {
       await deleteCard(deleting.id);
       setCards((prev) => prev.filter((c) => c.id !== deleting.id));
       toast.success("Cartão removido.");
-    } catch {
-      toast.error("Erro ao remover o cartão. Tente novamente.");
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 409) {
+        toast.error("Esse cartão tem parcela futura em aberto — quite ou apague as parcelas antes.");
+      } else {
+        toast.error("Erro ao remover o cartão. Tente novamente.");
+      }
     } finally {
       setDeleting(null);
     }

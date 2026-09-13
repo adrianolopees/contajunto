@@ -223,6 +223,119 @@ describe("POST /transactions", () => {
   });
 });
 
+describe("POST /transactions — parcelamento", () => {
+  it("should return 400 when installments > 1 on a non-credit expense", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .post("/api/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ ...validTransaction, paymentMethod: "DEBIT", installments: 3 });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("should return 400 when installments > 1 on income", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .post("/api/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ amount: 100, type: "INCOME", installments: 3 });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("should return 400 when installments exceeds the max", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .post("/api/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({
+        ...validTransaction,
+        paymentMethod: "CREDIT",
+        installments: 13,
+      });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("should create N transactions sharing an installmentGroupId, split evenly with the remainder on the last", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .post("/api/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({
+        amount: 100,
+        type: "EXPENSE",
+        description: "Notebook",
+        paymentMethod: "CREDIT",
+        installments: 3,
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.transactions).toHaveLength(3);
+    const groupId = res.body.transactions[0].installmentGroupId;
+    expect(groupId).toEqual(expect.any(String));
+
+    const amounts = res.body.transactions.map((t: { amount: string }) =>
+      Number(t.amount),
+    );
+    expect(amounts).toEqual([33.33, 33.33, 33.34]);
+    expect(
+      res.body.transactions.every(
+        (t: { installmentGroupId: string }) => t.installmentGroupId === groupId,
+      ),
+    ).toBe(true);
+    expect(
+      res.body.transactions.map(
+        (t: { installmentNumber: number }) => t.installmentNumber,
+      ),
+    ).toEqual([1, 2, 3]);
+    expect(
+      res.body.transactions.every(
+        (t: { installmentTotal: number }) => t.installmentTotal === 3,
+      ),
+    ).toBe(true);
+    // res.body.transaction (singular) continua existindo, é a 1ª parcela —
+    // mantém o contrato de quem só olha essa chave
+    expect(res.body.transaction.id).toBe(res.body.transactions[0].id);
+  });
+
+  it("should date each installment one month after the previous one", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .post("/api/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({
+        amount: 90,
+        type: "EXPENSE",
+        paymentMethod: "CREDIT",
+        installments: 3,
+      });
+
+    const months = res.body.transactions.map(
+      (t: { month: number }) => t.month,
+    );
+    const uniqueMonths = new Set(months);
+    expect(uniqueMonths.size).toBe(3);
+  });
+
+  it("should not set installment fields on a regular (non-parceled) transaction", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const res = await request(app)
+      .post("/api/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send(validTransaction);
+
+    expect(res.body.transaction.installmentGroupId).toBeNull();
+  });
+});
+
 describe("GET /transactions", () => {
   it("should return 401 when no token is provided", async () => {
     const res = await request(app).get("/api/transactions");
@@ -649,6 +762,71 @@ describe("DELETE /transactions/:id", () => {
       .set("Authorization", `Bearer ${accessToken}`);
 
     expect(res2.status).toBe(200);
+  });
+});
+
+describe("DELETE /transactions/:id — escopo de parcela", () => {
+  async function createInstallments(accessToken: string, count = 3) {
+    const res = await request(app)
+      .post("/api/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({
+        amount: 90,
+        type: "EXPENSE",
+        description: "Parcelado",
+        paymentMethod: "CREDIT",
+        installments: count,
+      });
+    return res.body.transactions as { id: string }[];
+  }
+
+  it("should delete only the targeted installment by default (scope=self)", async () => {
+    const accessToken = await createAndAuthenticateUser();
+    const [first, second, third] = await createInstallments(accessToken);
+
+    const res = await request(app)
+      .delete(`/api/transactions/${second.id}`)
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(res.status).toBe(200);
+
+    const stillThere = await prisma.transaction.findMany({
+      where: { id: { in: [first.id, second.id, third.id] } },
+    });
+    expect(stillThere.map((t) => t.id).sort()).toEqual(
+      [first.id, third.id].sort(),
+    );
+  });
+
+  it("should delete this and future installments with scope=group_forward, keeping past ones", async () => {
+    const accessToken = await createAndAuthenticateUser();
+    const [first, second, third] = await createInstallments(accessToken);
+
+    const res = await request(app)
+      .delete(`/api/transactions/${second.id}?scope=group_forward`)
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(res.status).toBe(200);
+
+    const stillThere = await prisma.transaction.findMany({
+      where: { id: { in: [first.id, second.id, third.id] } },
+    });
+    expect(stillThere.map((t) => t.id)).toEqual([first.id]);
+  });
+
+  it("should ignore scope=group_forward on a transaction with no installment group", async () => {
+    const accessToken = await createAndAuthenticateUser();
+
+    const created = await request(app)
+      .post("/api/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send(validTransaction);
+
+    const res = await request(app)
+      .delete(`/api/transactions/${created.body.transaction.id}?scope=group_forward`)
+      .set("Authorization", `Bearer ${accessToken}`);
+
+    expect(res.status).toBe(200);
   });
 });
 

@@ -41,6 +41,8 @@ export default function TransactionRow({
           </p>
           <p className="text-xs text-muted-foreground">
             {formatTransactionTimestamp(transaction.date)}
+            {transaction.installmentTotal &&
+              ` · ${transaction.installmentNumber}/${transaction.installmentTotal}`}
             {"user" in transaction && ` · ${transaction.user.name.split(" ")[0]}`}
           </p>
         </div>

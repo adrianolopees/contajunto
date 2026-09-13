@@ -14,6 +14,9 @@ export interface Transaction {
   month: number;
   year: number;
   createdAt: string;
+  installmentGroupId: string | null;
+  installmentNumber: number | null;
+  installmentTotal: number | null;
   category: {
     id: string;
     name: string;
@@ -55,6 +58,7 @@ export async function createTransaction(data: {
   categoryId?: string | null;
   paymentMethod?: PaymentMethod | null;
   cardId?: string | null;
+  installments?: number;
 }): Promise<Transaction> {
   const res = await api.post("/transactions", data);
   return res.data.transaction;
@@ -88,8 +92,11 @@ export async function updateTransaction(
   return res.data.transaction;
 }
 
-export async function deleteTransaction(id: string) {
-  await api.delete(`/transactions/${id}`);
+export async function deleteTransaction(
+  id: string,
+  scope?: "self" | "group_forward",
+) {
+  await api.delete(`/transactions/${id}`, { params: { scope } });
 }
 
 export async function getTransactionsSummary(params?: {

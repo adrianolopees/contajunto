@@ -17,9 +17,11 @@ import CategoryPicker, {
 } from "@/components/transactions/CategoryPicker";
 import PaymentMethodPicker from "@/components/transactions/PaymentMethodPicker";
 import CurrencyInput from "@/components/CurrencyInput";
+import { formatCurrency } from "@/lib/format";
 
 const NO_CARD = "none";
 const AMOUNT_CHIPS = [50, 100, 250, 500];
+const INSTALLMENT_OPTIONS = [1, 2, 3, 6, 12];
 
 const transactionFormSchema = z.object({
   type: z.enum(["EXPENSE", "INCOME"]),
@@ -28,6 +30,7 @@ const transactionFormSchema = z.object({
   description: z.string().max(255, "Nota muito longa"),
   categoryId: z.string().optional(),
   cardId: z.string().optional(),
+  installments: z.number().int().min(1).max(12),
 });
 
 type TransactionFormValues = z.infer<typeof transactionFormSchema>;
@@ -47,6 +50,7 @@ export default function TransactionForm() {
       description: "",
       categoryId: NO_CATEGORY,
       cardId: NO_CARD,
+      installments: 1,
     },
   });
 
@@ -58,8 +62,15 @@ export default function TransactionForm() {
   const categoryId = useWatch({ control: form.control, name: "categoryId" });
   const cardId = useWatch({ control: form.control, name: "cardId" });
   const amount = useWatch({ control: form.control, name: "amount" });
+  const installments = useWatch({
+    control: form.control,
+    name: "installments",
+  });
 
   const showCardPicker = type === "EXPENSE" && paymentMethod === "CREDIT";
+  // parcela é só uma variação de compra no crédito — mesma condição do
+  // seletor de cartão, não precisa de cartão escolhido pra existir
+  const showInstallmentPicker = showCardPicker;
 
   // categorias e cartões só precisam ser carregados uma vez
   useEffect(() => {
@@ -85,6 +96,13 @@ export default function TransactionForm() {
       form.setValue("cardId", cards[0].id);
     }
   }, [showCardPicker, cards, cardId, form]);
+
+  // parcela só faz sentido no crédito: fora dele volta pra 1x (à vista)
+  useEffect(() => {
+    if (!showInstallmentPicker && installments !== 1) {
+      form.setValue("installments", 1);
+    }
+  }, [showInstallmentPicker, installments, form]);
 
   // categoria escolhida pode não existir mais pro tipo selecionado — volta pra "sem categoria"
   useEffect(() => {
@@ -303,6 +321,39 @@ export default function TransactionForm() {
                   Nenhum
                 </button>
               </div>
+            )}
+          </div>
+        )}
+
+        {/* Parcelas: só no crédito */}
+        {showInstallmentPicker && (
+          <div>
+            <p className="mb-2 text-sm font-medium text-muted-foreground">
+              Parcelas
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {INSTALLMENT_OPTIONS.map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() =>
+                    form.setValue("installments", n, { shouldValidate: true })
+                  }
+                  className={cn(
+                    "rounded-lg border px-3 py-2 text-sm transition-colors",
+                    installments === n
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-muted",
+                  )}
+                >
+                  {n}x
+                </button>
+              ))}
+            </div>
+            {installments > 1 && amount > 0 && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                {installments}x de {formatCurrency(amount / installments)}
+              </p>
             )}
           </div>
         )}

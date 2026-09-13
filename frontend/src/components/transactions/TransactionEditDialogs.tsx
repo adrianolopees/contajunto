@@ -42,6 +42,10 @@ export default function TransactionEditDialogs({
   const paymentPickerTransaction = transactions.find(
     (t) => t.id === edit.paymentPickerFor,
   );
+  const deleteConfirmTransaction = transactions.find(
+    (t) => t.id === edit.deleteConfirmFor,
+  );
+  const isInstallment = deleteConfirmTransaction?.installmentGroupId != null;
 
   return (
     <>
@@ -139,25 +143,57 @@ export default function TransactionEditDialogs({
           <p className="text-sm text-muted-foreground">
             Essa ação não pode ser desfeita.
           </p>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => edit.setDeleteConfirmFor(null)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={() =>
-                edit.deleteConfirmFor &&
-                edit.confirmDelete(edit.deleteConfirmFor)
-              }
-            >
-              Excluir
-            </Button>
-          </DialogFooter>
+          {isInstallment ? (
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => edit.setDeleteConfirmFor(null)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() =>
+                  edit.deleteConfirmFor &&
+                  edit.confirmDelete(edit.deleteConfirmFor, "self")
+                }
+              >
+                Só esta parcela
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() =>
+                  edit.deleteConfirmFor &&
+                  edit.confirmDelete(edit.deleteConfirmFor, "group_forward")
+                }
+              >
+                Esta e as futuras
+              </Button>
+            </DialogFooter>
+          ) : (
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => edit.setDeleteConfirmFor(null)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() =>
+                  edit.deleteConfirmFor &&
+                  edit.confirmDelete(edit.deleteConfirmFor)
+                }
+              >
+                Excluir
+              </Button>
+            </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
     </>

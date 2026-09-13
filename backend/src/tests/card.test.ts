@@ -222,6 +222,33 @@ describe("DELETE /cards/:id", () => {
     expect(res.status).toBe(200);
     expect(res.body.transaction.cardId).toBeNull();
   });
+
+  it("should return 409 when the card has a pending future installment", async () => {
+    const token = await createAndAuthenticateUser();
+    const created = await request(app)
+      .post("/api/cards")
+      .set("Authorization", `Bearer ${token}`)
+      .send(validCard);
+    const cardId = created.body.card.id;
+
+    await request(app)
+      .post("/api/transactions")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        amount: 300,
+        type: "EXPENSE",
+        description: "Notebook parcelado",
+        paymentMethod: "CREDIT",
+        cardId,
+        installments: 3,
+      });
+
+    const res = await request(app)
+      .delete(`/api/cards/${cardId}`)
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(409);
+  });
 });
 
 describe("GET /cards/bills", () => {

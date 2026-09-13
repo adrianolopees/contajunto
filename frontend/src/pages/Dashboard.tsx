@@ -547,6 +547,8 @@ export default function Dashboard() {
                     <p className="truncate text-xs text-muted-foreground">
                       {transaction.category?.name ?? "Sem categoria"} ·{" "}
                       {formatRelativeDay(transaction.date)}
+                      {transaction.installmentTotal &&
+                        ` · ${transaction.installmentNumber}/${transaction.installmentTotal}`}
                       {"user" in transaction &&
                         ` · ${transaction.user.name.split(" ")[0]}`}
                     </p>
