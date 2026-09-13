@@ -115,8 +115,15 @@ export async function createTransaction(req: Request, res: Response) {
     return;
   }
 
+  // com cartão, ancora as parcelas nas faturas seguintes (evita colidir
+  // quando o fechamento cai perto do fim do mês); sem cartão não há fatura
+  // pra proteger, cai no fallback simples de lib/installments.ts
+  const card = cardId
+    ? await prisma.card.findFirst({ where: { id: cardId, userId } })
+    : null;
+
   const amountsCents = splitAmount(Math.round(amount * 100), installments);
-  const dates = installmentDates(getBusinessYMD(now), installments);
+  const dates = installmentDates(getBusinessYMD(now), installments, card?.closingDay);
   const installmentGroupId = crypto.randomUUID();
 
   const transactions = await prisma.$transaction(

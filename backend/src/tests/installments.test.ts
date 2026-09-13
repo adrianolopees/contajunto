@@ -1,4 +1,5 @@
 import { installmentDates, splitAmount } from "../lib/installments.js";
+import { invoiceCloseMonth } from "../lib/invoice.js";
 
 describe("installmentDates", () => {
   it("returns just the purchase date for a single installment", () => {
@@ -29,6 +30,49 @@ describe("installmentDates", () => {
       { year: 2026, month: 1, day: 31 },
       { year: 2026, month: 2, day: 28 },
     ]);
+  });
+});
+
+describe("installmentDates com closingDay (evita colisão de fatura)", () => {
+  it("keeps each installment in a distinct, consecutive invoice even when the closing day is near month-end", () => {
+    // fecha dia 29, compra 30/jan: repetir o dia (sem closingDay) faria a
+    // parcela de fevereiro clampar pra 28, que cai do lado errado do
+    // fechamento e colide com a parcela de janeiro na mesma fatura
+    const purchase = { year: 2026, month: 1, day: 30 };
+    const dates = installmentDates(purchase, 3, 29);
+
+    expect(dates[0]).toEqual(purchase); // a 1ª parcela nunca muda — é a compra real
+    const invoices = dates.map((d) => invoiceCloseMonth(d, 29));
+    expect(invoices).toEqual([
+      { year: 2026, month: 2 },
+      { year: 2026, month: 3 },
+      { year: 2026, month: 4 },
+    ]);
+  });
+
+  it("still lands each installment on the same invoice sequence in the common case", () => {
+    const purchase = { year: 2026, month: 9, day: 20 };
+    const dates = installmentDates(purchase, 3, 15);
+
+    const invoices = dates.map((d) => invoiceCloseMonth(d, 15));
+    expect(invoices).toEqual([
+      { year: 2026, month: 10 },
+      { year: 2026, month: 11 },
+      { year: 2026, month: 12 },
+    ]);
+  });
+
+  it("falls back to repeating the purchase day when closingDay is not given (no card)", () => {
+    const withCard = installmentDates({ year: 2026, month: 9, day: 13 }, 3, 15);
+    const withoutCard = installmentDates({ year: 2026, month: 9, day: 13 }, 3);
+    // sem closingDay não é "o mesmo resultado" por coincidência — é outro
+    // branch (fallback ingênuo); só confere que ele continua funcionando
+    expect(withoutCard).toEqual([
+      { year: 2026, month: 9, day: 13 },
+      { year: 2026, month: 10, day: 13 },
+      { year: 2026, month: 11, day: 13 },
+    ]);
+    expect(withCard[0]).toEqual(withoutCard[0]);
   });
 });
 

@@ -2,7 +2,8 @@ import request from "supertest";
 import app from "../app.js";
 import prisma from "../lib/prisma.js";
 import { createAndAuthenticateUser } from "./helpers.js";
-import { getBusinessMonthYear } from "../lib/date.js";
+import { getBusinessMonthYear, getBusinessYMD } from "../lib/date.js";
+import { invoiceCloseMonth } from "../lib/invoice.js";
 
 beforeEach(async () => {
   await prisma.invoicePayment.deleteMany();
@@ -322,6 +323,33 @@ describe("POST /transactions — parcelamento", () => {
     );
     const uniqueMonths = new Set(months);
     expect(uniqueMonths.size).toBe(3);
+  });
+
+  it("should account for the card's closing day so no two installments share an invoice", async () => {
+    const accessToken = await createAndAuthenticateUser();
+    // fechamento perto do fim do mês é justamente o caso que colidia antes
+    // do fix (lib/installments.ts ancora na fatura em vez de repetir o dia)
+    const card = await request(app)
+      .post("/api/cards")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ name: "Fecha no fim", closingDay: 29, dueDay: 5, color: "#8b5cf6" });
+
+    const res = await request(app)
+      .post("/api/transactions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({
+        amount: 90,
+        type: "EXPENSE",
+        paymentMethod: "CREDIT",
+        cardId: card.body.card.id,
+        installments: 3,
+      });
+
+    const invoiceKeys = res.body.transactions.map((t: { date: string }) => {
+      const invoice = invoiceCloseMonth(getBusinessYMD(new Date(t.date)), 29);
+      return `${invoice.year}-${invoice.month}`;
+    });
+    expect(new Set(invoiceKeys).size).toBe(3);
   });
 
   it("should not set installment fields on a regular (non-parceled) transaction", async () => {
