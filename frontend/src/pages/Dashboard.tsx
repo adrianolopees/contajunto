@@ -92,6 +92,7 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [pendingBills, setPendingBills] = useState<Bill[]>([]);
   const [billsTotalDue, setBillsTotalDue] = useState(0);
+  const [dueThisMonth, setDueThisMonth] = useState(0);
 
   useEffect(() => {
     if (!user?.familyGroupId) return;
@@ -173,6 +174,25 @@ export default function Dashboard() {
           data.bills.filter((b) => b.current.closed && !b.current.paid),
         );
         setBillsTotalDue(data.totalDue);
+
+        // "a pagar este mês" é sobre o mês civil real (hoje), não o mês
+        // navegado no MonthPicker — soma toda fatura (fechada ou ainda
+        // aberta) não paga cujo vencimento cai neste mês, mesmo que ela
+        // ainda não tenha fechado (é o caso que o dev trouxe: fecha dia 10,
+        // vence dia 20, a compra de antes do fechamento já é "deste mês")
+        const now = new Date();
+        const thisMonthKey = `${now.getFullYear()}-${now.getMonth() + 1}`;
+        let due = 0;
+        for (const bill of data.bills) {
+          for (const invoice of [bill.current, bill.upcoming]) {
+            if (!invoice || invoice.paid) continue;
+            const [dueYear, dueMonth] = invoice.dueDate.split("-").map(Number);
+            if (`${dueYear}-${dueMonth}` === thisMonthKey) {
+              due += invoice.total;
+            }
+          }
+        }
+        setDueThisMonth(due);
       })
       .catch(() => {});
   }, []);
@@ -229,6 +249,15 @@ export default function Dashboard() {
             <p className="text-3xl font-extrabold">
               {formatCurrency(summary?.balance ?? 0)}
             </p>
+            {view === "personal" &&
+              dueThisMonth > 0 &&
+              month === new Date().getMonth() + 1 &&
+              year === new Date().getFullYear() && (
+                <p className="mt-2 flex items-center gap-1.5 text-xs opacity-85">
+                  <span className="size-1.5 shrink-0 rounded-full bg-current" />
+                  A pagar este mês: {formatCurrency(dueThisMonth)}
+                </p>
+              )}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-lg bg-white/10 p-2">
@@ -350,7 +379,13 @@ export default function Dashboard() {
                       const budget = categoryBudgets[group.id];
                       // sem teto configurado pro grupo — não mostra barra
                       if (!budget) return null;
-                      return <BudgetBar spent={total} budget={budget} />;
+                      return (
+                        <BudgetBar
+                          spent={total}
+                          budget={budget}
+                          color={group.color}
+                        />
+                      );
                     }
                   : undefined
               }
